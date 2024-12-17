@@ -21,13 +21,12 @@ def run():
     libname = "libjl2py.dylib"
     libpath = os.path.join(libdir, libname)
 
-    libfunc = '_inc32'
-
     with JuliaLib(libpath) as jl2py:
         x = 3
         y = jl2py._inc32(x)
         print('({}, {})'.format(x, y))
 
+        # libfunc = '_inc32'
         # for i in range(100):
         #     x = int(random.random() * 100)
         #     print('(x, f(x)) = ({}, {})'.format(x, (getattr(jl2py, libfunc))(x)))
