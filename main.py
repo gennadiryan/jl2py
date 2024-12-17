@@ -20,14 +20,17 @@ def run():
     libdir = "target/lib"
     libname = "libjl2py.dylib"
     libpath = os.path.join(libdir, libname)
-    # libpath = os.path.join("/Users/gennadiryan/Documents/kestrel", libdir, libname)
 
     libfunc = '_inc32'
 
     with JuliaLib(libpath) as jl2py:
-        for i in range(100):
-            x = int(random.random() * 100)
-            print('(x, f(x)) = ({}, {})'.format(x, (getattr(jl2py, libfunc))(x)))
+        x = 3
+        y = jl2py._inc32(x)
+        print('({}, {})'.format(x, y))
+
+        # for i in range(100):
+        #     x = int(random.random() * 100)
+        #     print('(x, f(x)) = ({}, {})'.format(x, (getattr(jl2py, libfunc))(x)))
 
 
 # cmd = "DYLD_FALLBACK_LIBRARY_PATH=target/lib:target/lib/julia python3 main.py"
