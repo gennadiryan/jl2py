@@ -8,6 +8,7 @@ export _inc32, _inc64, _dec32, _dec64
 export demo
 # export one_mystruct, get_one_mystruct, get_one_mystruct_to_ptr, dump_one_mystruct_from_ptr, get_mystruct_type
 
+
 inc32(x::Int32)::Int32 = x + 1
 inc64(x::Int64)::Int64 = x + 1
 dec32(x::Int32)::Int32 = x - 1
