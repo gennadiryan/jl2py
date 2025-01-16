@@ -46,6 +46,10 @@ DYLD_FALLBACK_LIBRARY_PATH=./target/lib:./target/lib/julia python3 ./main.py
 DYLD_FALLBACK_LIBRARY_PATH=jl2py/target/lib:jl2py/target/lib/julia python3 -m jl2py.demo.quantum_collocation_demo
 ```
 
+#### TODOs
+
+- Consider whether Cython is preferable to ctypes
+
 ##### Comments
 
 The demo uses `jl_eval_string` to execute line-by-line the demo script from the `QuantumCollocation` `README.md`.
