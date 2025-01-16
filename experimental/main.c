@@ -9,6 +9,9 @@ int add_ref(jl_value_t *);
 int del_ref(jl_value_t *);
 jl_value_t *get_reft();
 
+void inspect_ty_flags(jl_value_t *);
+void inspect_ty_layout(jl_value_t *);
+
 jl_value_t *vals_to_tup(int, jl_value_t **);
 jl_value_t *ptr_to_arr(jl_value_t *, int, long *, void *, int);
 
@@ -242,10 +245,10 @@ void test_custom(void) {
     for (int i = 0; i < n; ++i) {
         // *(vals + i) = jl_call2(val_ty, jl_box_int64(1 + (2 * i)), jl_box_int64(2 + (2 * i)));
 
-        // jl_value_t *flds[2] = {jl_box_int64(1 + (2 * i)), jl_box_int64(2 + (2 * i))}; add_ref(flds[0]); add_ref(flds[1]);
-        // *(vals + i) = jl_new_structv((jl_datatype_t *) val_ty, flds, 2); add_ref(vals[i]);
+        jl_value_t *flds[2] = {jl_box_int64(1 + (2 * i)), jl_box_int64(2 + (2 * i))}; add_ref(flds[0]); add_ref(flds[1]);
+        *(vals + i) = jl_new_structv((jl_datatype_t *) val_ty, flds, 2); add_ref(vals[i]);
 
-        *(vals + i) = jl_eval_string("pt_immut(1, 2)"); add_ref(vals[i]);
+        // *(vals + i) = jl_eval_string("pt_immut(1, 2)"); add_ref(vals[i]);
 
         // jl_value_t *flds[2] = {jl_box_int64(1 + (2 * i)), jl_box_int64(2 + (2 * i))}; add_ref(flds[0]); add_ref(flds[1]);
         // jl_value_t *val_strct = jl_new_struct_uninit((jl_datatype_t *) val_ty); add_ref(val_strct);
@@ -253,19 +256,172 @@ void test_custom(void) {
         // jl_set_nth_field(val_strct, 1, flds[1]);
         // *(vals + i) = val_strct;
     }
-    jl_value_t *val_arr = ptr_to_arr(val_ty, 1, &n, (void *) vals, 0); add_ref(val_arr);
+    jl_value_t *val_arr = ptr_to_arr(val_ty, 1, &n, (void *) vals, 1); add_ref(val_arr);
     jl_call1(println, val_arr);
     jl_call1(println, jl_typeof(val_arr));
     jl_call1(println, vals[0]);
     jl_call1(println, jl_call2(getindex, val_arr, jl_box_int64(1)));
     jl_call1(println, jl_get_nth_field(val_arr, 0));
+    jl_call1(println, jl_get_nth_field(val_arr, 1));
 
     jl_value_t *extra_strct = jl_eval_string("pt_immut(3, 4)"); add_ref(extra_strct);
     jl_call1(println, extra_strct);
 
-    jl_array_ptr_1d_push((jl_array_t *) val_arr, extra_strct);
-    jl_call1(println, val_arr);
+    // jl_array_ptr_1d_push((jl_array_t *) val_arr, extra_strct);
+    // jl_call1(println, val_arr);
+    // jl_call1(println, extra_strct);
+
+    jl_value_t *val_arr_2 = (jl_value_t *) jl_alloc_array_1d(jl_typeof(val_arr), 0); add_ref(val_arr_2);
+    jl_array_ptr_1d_push((jl_array_t *) val_arr_2, extra_strct);
+    jl_call1(println, val_arr_2);
     jl_call1(println, extra_strct);
+
+    printf("%0lx\n", (long) vals);
+    printf("%0lx\n", (long) &(((jl_array_t *) val_arr)->ref));
+    printf("%0lx\n", (long) (&(((jl_array_t *) val_arr)->ref))->ptr_or_offset);
+    printf("%0lx\n", (long) (&(((jl_array_t *) val_arr)->ref))->mem);
+    printf("%0lx\n", (long) (&(((jl_array_t *) val_arr)->ref))->mem->ptr);
+    printf("%d\n", ((jl_datatype_t *) (jl_typetagof((&(((jl_array_t *) val_arr)->ref))->mem)))->layout->size);
+    printf("%d\n", ((jl_datatype_t *) (jl_typetagof((&(((jl_array_t *) val_arr)->ref))->mem)))->layout->flags.arrayelem_isboxed);
+
+    jl_call0(println);
+}
+
+void test_custom_2(void) {
+    jl_value_t *println = jl_eval_string("println");
+    jl_value_t *ty_immut = jl_eval_string("pt_immut");
+
+    jl_value_t *elem = jl_eval_string("elem1 = pt_immut(1, 2)");
+    jl_value_t *extra_strct = jl_eval_string("elem2 = pt_immut(3, 4)"); add_ref(extra_strct);
+    jl_value_t *entries[2] = {jl_box_int64(4), jl_box_int64(20)};
+    jl_value_t *extra_strct_2 = jl_new_structv((jl_datatype_t *) ty_immut, entries, 2);
+    jl_call1(println, extra_strct_2);
+    // jl_value_t *val = jl_eval_string("val = pt_immut[]"); add_ref(val);
+    jl_value_t *val = (jl_value_t *) jl_alloc_array_1d(jl_apply_array_type(ty_immut, 1), 0); add_ref(val); // same effect as above
+    // jl_array_ptr_1d_push((jl_array_t *) val, elem);
+
+
+
+    // jl_eval_string("push!(val, elem2)");
+    jl_call2(jl_eval_string("push!"), val, extra_strct_2);
+    jl_call2(jl_eval_string("push!"), val, extra_strct);
+    // jl_eval_string("push!(val, elem2)");
+
+    jl_call1(println, jl_typeof(val));
+    jl_call1(println, val);
+
+    printf("%0lx\n", (long) elem);
+    printf("%0lx\n", (long) &(((jl_array_t *) val)->ref));
+    printf("%0lx\n", (long) (&(((jl_array_t *) val)->ref))->ptr_or_offset);
+    printf("%0lx\n", (long) (&(((jl_array_t *) val)->ref))->mem);
+    printf("%0lx\n", (long) (&(((jl_array_t *) val)->ref))->mem->ptr);
+    printf("%ld\n", (long) jl_array_data(val, void *));
+    printf("%ld\n", (long) jl_array_data(val, void *)[0]);
+    printf("%ld\n", (long) jl_array_data(val, void *)[1]);
+    printf("%ld\n", (long) jl_array_data(val, void *)[2]);
+    printf("%ld\n", (long) jl_array_data(val, void *)[3]);
+    // printf("%ld\n", (long) jl_array_data(val, void *)[4]);
+    // printf("%ld\n", (long) jl_array_data(val, void *)[5]);
+    printf("%d\n", ((jl_datatype_t *) (jl_typetagof((&(((jl_array_t *) val)->ref))->mem)))->layout->size);
+
+    jl_call0(println);
+}
+
+void test_custom_3(void) {
+    jl_value_t *println = jl_eval_string("println");
+    jl_value_t *ty_immut = jl_eval_string("pt_immut");
+
+    jl_value_t *elem = jl_eval_string("elem1 = pt_immut(1, 2)");
+    jl_value_t *extra_strct = jl_eval_string("elem2 = pt_immut(3, 4)"); add_ref(extra_strct);
+    jl_value_t *entries[2] = {jl_box_int64(4), jl_box_int64(20)};
+    jl_value_t *extra_strct_2 = jl_new_structv((jl_datatype_t *) ty_immut, entries, 2);
+    jl_call1(println, extra_strct_2);
+
+    // jl_value_t *val = jl_eval_string("val = pt_immut[]"); add_ref(val);
+    // jl_value_t *val = (jl_value_t *) jl_alloc_array_1d(jl_apply_array_type(ty_immut, 1), 0); add_ref(val); // same effect as above
+    jl_value_t *val = (jl_value_t *) jl_alloc_array_1d(jl_array_any_type, 0); add_ref(val); // same effect as above
+    // jl_array_ptr_1d_push((jl_array_t *) val, elem);
+
+
+
+    // jl_eval_string("push!(val, elem2)");
+    jl_call2(jl_eval_string("push!"), val, extra_strct_2);
+    jl_call2(jl_eval_string("push!"), val, extra_strct);
+    // jl_eval_string("push!(val, elem2)");
+
+    jl_call1(println, jl_typeof(val));
+    jl_call1(println, val);
+
+    printf("%0lx\n", (long) elem);
+    printf("%0lx\n", (long) &(((jl_array_t *) val)->ref));
+    printf("%0lx\n", (long) (&(((jl_array_t *) val)->ref))->ptr_or_offset);
+    printf("%0lx\n", (long) (&(((jl_array_t *) val)->ref))->mem);
+    printf("%0lx\n", (long) (&(((jl_array_t *) val)->ref))->mem->ptr);
+    printf("%ld\n", (long) jl_array_data(val, void *));
+    printf("%ld\n", (long) jl_array_data(val, void *)[0]);
+    printf("%ld\n", (long) jl_array_data(val, void *)[1]);
+    printf("%ld\n", (long) jl_array_data(val, void *)[2]);
+    printf("%ld\n", (long) jl_array_data(val, void *)[3]);
+    jl_call1(println, (jl_value_t *) (jl_array_data(val, void *)[0]));
+    jl_call1(println, (jl_value_t *) (jl_array_data(val, void *)[1]));
+    // printf("%ld\n", (long) jl_array_data(val, void *)[4]);
+    // printf("%ld\n", (long) jl_array_data(val, void *)[5]);
+    printf("%d\n", ((jl_datatype_t *) (jl_typetagof((&(((jl_array_t *) val)->ref))->mem)))->layout->size);
+
+    jl_call0(println);
+}
+
+void test_custom_4(void) {
+    jl_value_t *println = jl_eval_string("println");
+    jl_value_t *push = jl_eval_string("push!");
+
+    jl_value_t *ty_union_immut = jl_eval_string("Union{Int, pt_immut}");
+    jl_value_t *ty_union_mut = jl_eval_string("Union{Int, Vector{Int}}");
+    jl_value_t *ty_union = ty_union_mut;
+    jl_call1(println, ty_union);
+
+    jl_value_t *val_arr = (jl_value_t *) jl_alloc_array_1d(jl_apply_array_type(ty_union, 1), 0); add_ref(val_arr);
+    jl_call2(push, val_arr, jl_box_int64(4));
+    jl_call2(push, val_arr, jl_box_int64(20));
+    jl_call1(println, val_arr);
+
+    printf("%d\n", ((jl_datatype_t *) (jl_typetagof((&(((jl_array_t *) val_arr)->ref))->mem)))->layout->flags.arrayelem_isboxed);
+    printf("%d\n", ((jl_datatype_t *) jl_typetagof((((jl_array_t *) val_arr)->ref).mem))->layout->flags.arrayelem_isboxed);
+    printf("%d\n", ((jl_datatype_t *) ty_union)->layout->flags.arrayelem_isboxed);
+
+    jl_value_t *ty_strct_immut = jl_eval_string("pt_immut");
+    jl_value_t *ty_strct_arr_immut = jl_apply_array_type(ty_strct_immut, 1);
+    jl_value_t *ty_strct_mut = jl_eval_string("pt_mut");
+    jl_value_t *ty_strct_arr_mut = jl_apply_array_type(ty_strct_mut, 1);
+
+    jl_value_t *ty_mem_immut = jl_svecref(((jl_datatype_t *) jl_svecref(((jl_datatype_t *) ty_strct_arr_immut)->types, 0))->types, 1);
+    jl_call1(println, ty_mem_immut);
+
+    // jl_value_t *ty_mut_tys = (jl_value_t *) ((jl_datatype_t *) ty_strct_arr_mut)->types;
+    // jl_call1(println, ty_mut_tys);
+    // jl_value_t *ty_memref_mut = jl_svecref(ty_mut_tys, 0);
+    // jl_call1(println, ty_memref_mut);
+    // jl_value_t *ty_memref_mut_tys = (jl_value_t *) ((jl_datatype_t *) ty_memref_mut)->types;
+    // jl_call1(println, ty_memref_mut_tys);
+    // jl_value_t *ty_mem_mut = jl_svecref(ty_memref_mut_tys, 1);
+    // jl_call1(println, ty_mem_mut);
+
+    jl_value_t *ty_mem_mut = jl_svecref(((jl_datatype_t *) jl_svecref(((jl_datatype_t *) ty_strct_arr_mut)->types, 0))->types, 1);
+    jl_call1(println, ty_mem_mut);
+
+    int n_tys = 6;
+    jl_value_t *tys[6] = {ty_strct_immut, ty_strct_mut, ty_strct_arr_immut, ty_strct_arr_mut, ty_mem_immut, ty_mem_mut};
+    
+    for (int i = 0; i < n_tys; ++i) {
+        inspect_ty_flags(tys[i]);
+        inspect_ty_layout(tys[i]);
+    }
+    // ty_cur = ty_strct_mut;
+    // inspect_ty_flags(ty_strct);
+    // inspect_ty_layout(ty_strct);
+
+
+    jl_call0(println);
 }
 
 void test_tuple(void) {
@@ -294,6 +450,73 @@ void test_tuple(void) {
     jl_call1(println, vals_to_tup(2, val_pair));
 }
 
+
+char *char_to_binstr(char bt) {
+    char *binstr = malloc(sizeof(char) * 9);
+    for (int i = 0; i < 8; ++i)
+        binstr[8 - i - 1] = ((bt >> i) & 0x1) ? '1' : '0';
+    binstr[8] = '\0';
+    return binstr;
+}
+
+void inspect_ty_flags(jl_value_t *val_ty) {
+    jl_datatype_t *ty = (jl_datatype_t *) val_ty;
+
+    // int flags[11];
+
+    printf(
+        "(%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d)\n",
+        ty->hasfreetypevars,
+        ty->isconcretetype,
+        ty->isdispatchtuple,
+        ty->isbitstype,
+        ty->zeroinit,
+        ty->has_concrete_subtype,
+        ty->maybe_subtype_of_cache,
+        ty->isprimitivetype,
+        ty->ismutationfree,
+        ty->isidentityfree,
+        ty->smalltag
+    );
+    printf("\n");
+}
+
+void inspect_ty_layout(jl_value_t *val_ty) {
+    const jl_datatype_layout_t *ty_layout = ((jl_datatype_t *) val_ty)->layout;
+
+    printf(
+        "(%u,%u,%u,%08x,%hu,%04x)\n",
+        ty_layout->size,
+        ty_layout->nfields,
+        ty_layout->npointers,
+        ty_layout->first_ptr,
+        ty_layout->alignment,
+        *((unsigned short *) &(ty_layout->flags))
+    );
+
+    char flags = *((const char *) &(ty_layout->flags));
+    printf(
+        "(%d,%d,%d,%d,%d)\n",
+        (flags >> 0) & 0x1,
+        (flags >> 1) & 0x3,
+        (flags >> 3) & 0x1,
+        (flags >> 4) & 0x1,
+        (flags >> 5) & 0x1
+    );
+
+    // printf(
+    //     "(%d,%d,%d,%d)\n",
+    //     ty_layout->flags.haspadding,
+    //     ty_layout->flags.fielddesc_type,
+    //     ty_layout->flags.arrayelem_isboxed,
+    //     ty_layout->flags.arrayelem_isunion
+    //     // ty_layout->flags.isbitsegal
+    // );
+    // char *flag_ptr = (char *) &(ty_layout->flags);
+    // printf("%s\n", char_to_binstr(flag_ptr[0]));
+
+    printf("\n");
+}
 
 jl_value_t *vals_to_tup(int n, jl_value_t **vals) {
     jl_value_t **val_types = malloc(n * sizeof(jl_value_t *));
@@ -352,6 +575,9 @@ int main(int argc, char **argv) {
     // test_tuple();
     // test_array();
     test_custom();
+    test_custom_2();
+    test_custom_3();
+    test_custom_4();
 
     shutdown_julia(0);
 
