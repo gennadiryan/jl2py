@@ -424,6 +424,53 @@ void test_custom_4(void) {
     jl_call0(println);
 }
 
+void test_custom_5(void) {
+    jl_value_t *println = jl_eval_string("println");
+    jl_call0(println);
+
+    jl_value_t *ty_strct_immut = jl_eval_string("pt_immut");
+    jl_value_t *ty_strct_mut = jl_eval_string("pt_mut");
+    jl_value_t *ty_strct = ty_strct_immut;
+
+    jl_value_t *entries[2] = {jl_box_int64(4), jl_box_int64(19)};
+    jl_value_t *val_strct = jl_new_structv((jl_datatype_t *) ty_strct, entries, 2); add_ref(val_strct);
+    // jl_value_t *val_strct = jl_new_struct_uninit((jl_datatype_t *) ty_immut); add_ref(val_strct);
+
+    jl_value_t *fld = jl_get_field(val_strct, "x");
+    jl_call1(println, jl_typeof(fld));
+    jl_call1(println, fld);
+
+    // jl_set_nth_field(val_strct, 1, jl_box_int64(20));
+    jl_call1(println, val_strct);
+
+    unsigned long offset0 = jl_field_offset((jl_datatype_t *) ty_strct, 0);
+    unsigned long size0 = jl_field_size((jl_datatype_t *) ty_strct, 0);
+    unsigned long offset1 = jl_field_offset((jl_datatype_t *) ty_strct, 1);
+    unsigned long size1 = jl_field_size((jl_datatype_t *) ty_strct, 1);
+    printf("%lu, %lu; %lu, %lu\n", offset0, size0, offset1, size1);
+
+    // don't forget jl_ptr_offset()
+    printf("%u, %u, %d, %d, %d\n", jl_field_offset((jl_datatype_t *) ty_strct, 0), jl_field_size((jl_datatype_t *) ty_strct, 0), jl_field_isptr((jl_datatype_t *) ty_strct, 0), jl_field_isatomic((jl_datatype_t *) ty_strct, 0), jl_field_isconst((jl_datatype_t *) ty_strct, 0));
+    
+    long raw0 = *((long *) ((char *) val_strct + offset0));
+    long raw1 = *((long *) ((char *) val_strct + offset1));
+    printf("%ld, %ld\n", raw0, raw1);
+
+    jl_call0(println);
+
+    ////
+
+    // *((jl_value_t **)(((char *) val_strct) + offset))
+
+    jl_eval_string("struct vec_cont a::Vector{Int64} end");
+    jl_value_t *ptr_strct = jl_eval_string("vec_cont([1, 2, 3])"); add_ref(ptr_strct);
+    jl_call1(println, jl_typeof(ptr_strct));
+    jl_call1(println, ptr_strct);
+
+    inspect_ty_flags(jl_typeof(ptr_strct));
+    inspect_ty_layout(jl_typeof(ptr_strct));
+}
+
 void test_tuple(void) {
     jl_value_t *println = jl_eval_string("println");
 
@@ -578,6 +625,7 @@ int main(int argc, char **argv) {
     test_custom_2();
     test_custom_3();
     test_custom_4();
+    test_custom_5();
 
     shutdown_julia(0);
 
