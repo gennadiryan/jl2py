@@ -76,6 +76,7 @@ class JuliaVal:
         - optional; implement __eq__ (underlied by jl_egal) and possibly __hash__
         - optional; implement __lt__/__gt__ if the underlying Julia type allows for it
         - optional; implement __str__, __format__
+        - catch and forward Julia exceptions
     """
 
     def __init__(self, lib, val):
