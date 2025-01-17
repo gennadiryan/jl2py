@@ -93,7 +93,7 @@ void do_demo_2(jl_module_t *mod_qc) {
 
     jl_value_t *cons_uspp = jl_get_global(mod_qc, jl_symbol("UnitarySmoothPulseProblem")); wrap(cons_uspp);
     jl_value_t *var_operator = jl_eval_string("GATES[:H]"); wrap(var_operator);
-    jl_value_t *var_T = jl_box_int64(50); wrap(var_T); // must be Int64, not Int32, despite USPP accepting julia type Int (where supposedly Int <: Int32)
+    jl_value_t *var_T = jl_box_int64(100); wrap(var_T); // must be Int64, not Int32, despite USPP accepting julia type Int (where supposedly Int <: Int32)
     jl_value_t *var_dt = jl_box_float64(0.2); wrap(var_dt);
     jl_call1(println, qs);
     jl_call1(println, var_operator);
@@ -121,7 +121,7 @@ void do_demo_2(jl_module_t *mod_qc) {
     int ipopt_opts_idx = jl_field_index((jl_datatype_t *) jl_typeof(qcp), jl_symbol("ipopt_options"), 0);
     jl_value_t *ipopt_opts = jl_get_nth_field(qcp, ipopt_opts_idx);
     int max_iter_idx = jl_field_index((jl_datatype_t *) jl_typeof(ipopt_opts), jl_symbol("max_iter"), 0);
-    jl_set_nth_field(ipopt_opts, max_iter_idx, jl_box_int64(100));
+    jl_set_nth_field(ipopt_opts, max_iter_idx, jl_box_int64(1000));
 
     jl_value_t *max_iter = jl_get_nth_field(ipopt_opts, max_iter_idx);
     jl_call1(println, max_iter);
@@ -265,12 +265,12 @@ int main(int argc, char **argv) {
     // jl_call1(println, jl_typeof(x));
     // jl_call1(println, im);
 
-    test_segfault();
+    // test_segfault();
 
-    // // jl_gc_enable(0);
-    // // do_demo(mod_qc);
-    // do_demo_2(mod_qc);
-    // // jl_gc_enable(1);
+    // jl_gc_enable(0);
+    // do_demo(mod_qc);
+    do_demo_2(mod_qc);
+    // jl_gc_enable(1);
 
     shutdown_julia(0);
 
