@@ -5,7 +5,7 @@ from typing import Any, Generic, List, Optional, Set, Tuple, TypeVar, Union
 import os
 import random
 import ctypes, _ctypes
-from ctypes import cdll, c_int, c_char_p, c_void_p
+from ctypes import cdll, c_int, c_int32, c_int64, c_uint, c_uint32, c_uint64, c_char_p, c_void_p
 
 
 class JuliaLib:
@@ -21,110 +21,114 @@ class JuliaLib:
         self.lib.shutdown_julia(0)
 
 
-class JuliaLibUtils:
-    _primitive_types = {c_int,}
-    _reference_types = {c_char_p, c_void_p}
+# class JuliaLibUtils:
+#     _primitive_types = {c_int,}
+#     _reference_types = {c_char_p, c_void_p}
 
-    def __init__(self, lib, libfuncs):
-        self.lib = lib
+#     def __init__(self, lib, libfuncs):
+#         self.lib = lib
 
-        for k, v in libfuncs.items():
-            assert self._register_func(k, ty=v, ty_is_ref=v in self._reference_types) is not None, f'Failed to register function {k}'
+#         for k, v in libfuncs.items():
+#             assert self._register_func(k, ty=v, ty_is_ref=v in self._reference_types) is not None, f'Failed to register function {k}'
 
-    def _register_func(self, name: str, ty: Optional[Any] = None, ty_is_ref: Optional[bool] = None) -> Optional[Callable[..., Any]]:
-        if len(name) == 0 or name[0] == '_':
-            return None
+#     def _register_func(self, name: str, ty: Optional[Any] = None, ty_is_ref: Optional[bool] = None) -> Optional[Callable[..., Any]]:
+#         if len(name) == 0 or name[0] == '_':
+#             return None
         
-        func = getattr(self.lib, name, None)
-        if func is None:
-            return None
+#         func = getattr(self.lib, name, None)
+#         if func is None:
+#             return None
         
-        if ty is not None:
-            setattr(func, 'restype', ty)
-            if ty_is_ref:
-                # func = lambda *args, **kwargs: ctypes.cast(func(*args, **kwargs), ty)
-                func = (lambda f: (lambda *args, **kwargs: ctypes.cast(f(*args, **kwargs), ty)))(func)
+#         if ty is not None:
+#             setattr(func, 'restype', ty)
+#             if ty_is_ref:
+#                 # func = lambda *args, **kwargs: ctypes.cast(func(*args, **kwargs), ty)
+#                 func = (lambda f: (lambda *args, **kwargs: ctypes.cast(f(*args, **kwargs), ty)))(func)
         
-        if getattr(self, name, None) is not None:
-            return None
-        setattr(self, name, func)
+#         if getattr(self, name, None) is not None:
+#             return None
+#         setattr(self, name, func)
 
-        return getattr(self, name, None)
+#         return getattr(self, name, None)
         
 
-def str2buf(s: str) -> _ctypes.Array:
-    return ctypes.create_string_buffer(s.encode())
+# def str2buf(s: str) -> _ctypes.Array:
+#     return ctypes.create_string_buffer(s.encode())
 
 
 class JuliaVal:
+    """
+    Wrapper class for Julia objects of type T <: Any
+
+    Attributes:
+        _lib (ctypes.CDLL): shared library from which Julia C API utility functions are accessed
+        _val (ctypes.c_void_p): jl_value_t * underlying the value
+        _convert_to (Callable): handler for converting 
+
+    TODO:
+        - handle global rooting (to prevent GC on Julia side) at __init__ (and/or __new__?), __del__, and __delattr__
+        - wrap julia library fns (eval_string, call, call[1,2,3], etc.) into Dict or similar structure to simplify their access within methods/avoid polluting each method local namespaces
+        - clarify semantics for _convert_to (currently accepts either raw C ptrs or accesses the _val field of a JuliaVal; used on args upon function call)
+        - determine semantics for _convert_from (used on retvalue after function call)
+        - determine semantics for storing Julia datatypes and their connection with _convert_to, _convert_from implementation
+        - implement __repr__
+        - implement __dir__
+        - optional; implement __eq__ (underlied by jl_egal) and possibly __hash__
+        - optional; implement __lt__/__gt__ if the underlying Julia type allows for it
+        - optional; implement __str__, __format__
+    """
+
     def __init__(self, lib, val):
         _getattr = lambda *_: object.__getattribute__(self, *_)
         _setattr = lambda *_: object.__setattr__(self, *_)
 
-        # self._lib = lib
         _setattr('_lib', lib)
-
-        # self._val = val
         _setattr('_val', val)
 
-        # self._eval_string = get_fn_eval_string(lib)
-        # self._call1 = get_fn_call1(lib)
-        # self._call2 = get_fn_call2(lib)
-        # self._symbol = get_fn_symbol(lib)
+        _setattr('_convert_to', lambda _: object.__getattribute__(_, '_val') if isinstance(_, JuliaVal) else _)
+
         _setattr('_eval_string', get_fn_eval_string(lib))
+        _setattr('_call', get_fn_call(lib))
         _setattr('_call1', get_fn_call1(lib))
         _setattr('_call2', get_fn_call2(lib))
+        _setattr('_call3', get_fn_call3(lib))
         _setattr('_symbol', get_fn_symbol(lib))
 
-        # self._val_getproperty = self._eval_string(b'getproperty')
         _setattr('_val_getproperty', _getattr('_eval_string')(b'getproperty'))
     
     def __getattribute__(self, name):
+        if (len(name) == 0) or (len(name) > 0 and name[0] == '_'):
+            raise AttributeError(f'{type(self)} object has no attribute {name}')
+        
+        _getattr = lambda *_: object.__getattribute__(self, *_)
+        _setattr = lambda *_: object.__setattr__(self, *_)
+        
+        _val = _getattr('_val')
+
+        # _eval_string = _getattr('_eval_string')
+        # _call1 = _getattr('_call1')
+        _call2 = _getattr('_call2')
+        _symbol = _getattr('_symbol')
+        
+        _val_getproperty = _getattr('_val_getproperty')
+
+        _prop = _call2(_val_getproperty, _val, _symbol(name.encode()))
+        if _prop is None:
+            raise AttributeError(f'{type(self)} object has no attribute {name}')
+        return _prop
+    
+    def __call__(self, *args, **kwds):
         _getattr = lambda *_: object.__getattribute__(self, *_)
         _setattr = lambda *_: object.__setattr__(self, *_)
 
-        if (len(name) == 0 and name[0] == '_'):
-            print(f'Cannot access underscore-prefixed attributes of {type(self)}')
-            return None
-        
         _val = _getattr('_val')
-        _eval_string = _getattr('_eval_string')
-        _call1 = _getattr('_call1')
-        _call2 = _getattr('_call2')
-        _symbol = _getattr('_symbol')
-        _val_getproperty = _getattr('_val_getproperty')
+        _call = _getattr('_call')
 
-        # println = _eval_string(b'println')
-        # hello = _eval_string(b'"hello"')
-        # _eval_string(b'println("Hello")')
-        # res = _call1(println, hello)
-        # print(println, hello, res)
+        _args = get_ctypes_arr(c_void_p, *map(_getattr('_convert_to'), args))
+        _nargs = len(args)
 
-        _prop = _call2(_val_getproperty, _val, _symbol(name.encode()))
-        
-        return _prop
-
-
-# class testcls:
-#     _x = 3
-#     x = 4
-#     _y = 19
-#     y = 20
-#     _i = 0
-#     def __getattribute__(self, name):
-#         if name[0] == '_':
-#             print('panic')
-#             return None
-#         object.__setattr__(self, '_i', object.__getattribute__(self, '_i') + 1)
-#         object.__getattribute__(self, '_sayhi')('buddy')
-#         return object.__getattribute__(self, name)
-#     def _sayhi(self, name):
-#         print(f'hello there {name}')
-#     def get_i(self):
-#         return object.__getattribute__(self, '_i')
-
-
-
+        _res = _call(_val, _args, _nargs)
+        return _res
 
 
 def get_fn_eval_string(lib):
@@ -133,6 +137,12 @@ def get_fn_eval_string(lib):
     jl_eval_string.restype = c_void_p
     return jl_eval_string
 
+def get_fn_call(lib):
+    jl_call = lib.jl_call
+    jl_call.argtypes = [c_void_p, c_void_p, c_uint32]
+    jl_call.restype = c_void_p
+    return jl_call
+
 def get_fn_call1(lib):
     jl_call1 = lib.jl_call1
     jl_call1.argtypes = [c_void_p, c_void_p]
@@ -140,13 +150,21 @@ def get_fn_call1(lib):
     return jl_call1
 
 def get_fn_call2(lib):
-    jl_call1 = lib.jl_call2
-    jl_call1.argtypes = [c_void_p, c_void_p, c_void_p]
-    jl_call1.restype = c_void_p
-    return jl_call1
+    jl_call2 = lib.jl_call2
+    jl_call2.argtypes = [c_void_p, c_void_p, c_void_p]
+    jl_call2.restype = c_void_p
+    return jl_call2
 
-# def get_fn_typeof(lib):
-#     jl_typeof = lib.jl_typeof
+def get_fn_call3(lib):
+    jl_call3 = lib.jl_call3
+    jl_call3.argtypes = [c_void_p, c_void_p, c_void_p, c_void_p]
+    jl_call3.restype = c_void_p
+    return jl_call3
+
+def get_fn_typeof(lib):
+    jl_typeof = lib.jl_typeof
+    jl_typeof.argtypes = [c_void_p,]
+    jl_typeof.restype = c_void_p
 
 def get_fn_symbol(lib):
     jl_symbol = lib.jl_symbol
@@ -155,12 +173,17 @@ def get_fn_symbol(lib):
     return jl_symbol
 
 
+
+def get_ctypes_arr(ty, *args):
+    return (ty * len(args))(*args)
+
+
 def run_experimental(lib):
-    pass
+    jl_eval = get_fn_eval_string(lib)
+    jl_call1 = get_fn_call1(lib)
+    println = jl_eval(b'println')
 
-
-
-
+    return jl_eval, jl_call1, println
 
 
 # def run():
@@ -270,4 +293,5 @@ if __name__ == '__main__':
 
     lib = JuliaLib(libpath).__enter__()
     # jl = JuliaLibUtils(lib, libfuncs)
-    run_experimental(lib)
+
+    jl_eval, jl_call1, println = run_experimental(lib)
