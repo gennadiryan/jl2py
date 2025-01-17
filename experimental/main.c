@@ -541,11 +541,11 @@ jl_value_t *ptr_to_arr(jl_value_t *ty, int ndims, long *dims, void *data, int ow
         *(val_dims_types + i) = (jl_value_t *) jl_int64_type;
     }
 
-    jl_value_t *val_dims_tup_type = jl_apply_tuple_type_v(val_dims_types, ndims);
-    jl_value_t *val_dims_tup = jl_new_structv((jl_datatype_t *) val_dims_tup_type, val_dims, ndims);
+    jl_value_t *val_dims_tup_type = jl_apply_tuple_type_v(val_dims_types, ndims); // Tuple{Int64, ...} datatype for dimensions
+    jl_value_t *val_dims_tup = jl_new_structv((jl_datatype_t *) val_dims_tup_type, val_dims, ndims); // Tuple{Int64, ...} instantiated
 
-    jl_value_t *val_arr_type = jl_apply_array_type(ty, ndims);
-    jl_value_t *val_arr = (jl_value_t *) jl_ptr_to_array(val_arr_type, data, val_dims_tup, own);
+    jl_value_t *val_arr_type = jl_apply_array_type(ty, ndims); // Array{T, N} datatype for T=ty, N=ndims
+    jl_value_t *val_arr = (jl_value_t *) jl_ptr_to_array(val_arr_type, data, val_dims_tup, own); // Array{T, N} instantiated
 
     return val_arr;
 }
