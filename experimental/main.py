@@ -320,7 +320,15 @@ class JuliaVal:
 
         res = fns.call(val, args, nargs) # TODO: handle bad return values and possibly exceptions
         return res
+    
 
+def init_refs(lib, fns):
+    jl_base_module = c_void_p.in_dll(lib, 'jl_base_module')
+    jl_main_module = c_void_p.in_dll(lib, 'jl_main_module')
+
+    jl_any_value = c_void_p.in_dll(lib, 'jl_any_value')
+
+    # fns.
 
 # def get_fn_eval_string(lib):
 #     jl_eval_string = lib.jl_eval_string
@@ -446,6 +454,18 @@ if __name__ == '__main__':
         jl_set_nth_field=((c_void_p, c_size_t, c_void_p,), None),
         
         jl_box_int64=((c_int64,), c_void_p),
+
+
+        # # init_refs()
+        # # jl_=((,), None),
+
+        # jl_gc_enable=((,), None),
+
+        # jl_get_binding_wr=((,), None),
+        # jl_get_global=((,), None),
+        # jl_checked_assignment=((,), None),
+
+        # jl_apply_type2=((,), None),
     )
 
     lib = JuliaLib(libpath).__enter__()
