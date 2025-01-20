@@ -322,72 +322,72 @@ class JuliaVal:
         return res
 
 
-def get_fn_eval_string(lib):
-    jl_eval_string = lib.jl_eval_string
-    jl_eval_string.argtypes = [c_char_p,]
-    jl_eval_string.restype = c_void_p
-    return jl_eval_string
+# def get_fn_eval_string(lib):
+#     jl_eval_string = lib.jl_eval_string
+#     jl_eval_string.argtypes = [c_char_p,]
+#     jl_eval_string.restype = c_void_p
+#     return jl_eval_string
 
-def get_fn_call(lib):
-    jl_call = lib.jl_call
-    jl_call.argtypes = [c_void_p, c_void_p, c_uint32]
-    jl_call.restype = c_void_p
-    return jl_call
+# def get_fn_call(lib):
+#     jl_call = lib.jl_call
+#     jl_call.argtypes = [c_void_p, c_void_p, c_uint32]
+#     jl_call.restype = c_void_p
+#     return jl_call
 
-def get_fn_call1(lib):
-    jl_call1 = lib.jl_call1
-    jl_call1.argtypes = [c_void_p, c_void_p]
-    jl_call1.restype = c_void_p
-    return jl_call1
+# def get_fn_call1(lib):
+#     jl_call1 = lib.jl_call1
+#     jl_call1.argtypes = [c_void_p, c_void_p]
+#     jl_call1.restype = c_void_p
+#     return jl_call1
 
-def get_fn_call2(lib):
-    jl_call2 = lib.jl_call2
-    jl_call2.argtypes = [c_void_p, c_void_p, c_void_p]
-    jl_call2.restype = c_void_p
-    return jl_call2
+# def get_fn_call2(lib):
+#     jl_call2 = lib.jl_call2
+#     jl_call2.argtypes = [c_void_p, c_void_p, c_void_p]
+#     jl_call2.restype = c_void_p
+#     return jl_call2
 
-def get_fn_call3(lib):
-    jl_call3 = lib.jl_call3
-    jl_call3.argtypes = [c_void_p, c_void_p, c_void_p, c_void_p]
-    jl_call3.restype = c_void_p
-    return jl_call3
+# def get_fn_call3(lib):
+#     jl_call3 = lib.jl_call3
+#     jl_call3.argtypes = [c_void_p, c_void_p, c_void_p, c_void_p]
+#     jl_call3.restype = c_void_p
+#     return jl_call3
 
-def get_fn_typeof(lib):
-    jl_typeof = lib.jl_typeof
-    jl_typeof.argtypes = [c_void_p,]
-    jl_typeof.restype = c_void_p
-    return jl_typeof
+# def get_fn_typeof(lib):
+#     jl_typeof = lib.jl_typeof
+#     jl_typeof.argtypes = [c_void_p,]
+#     jl_typeof.restype = c_void_p
+#     return jl_typeof
 
-def get_fn_symbol(lib):
-    jl_symbol = lib.jl_symbol
-    jl_symbol.argtypes = [c_char_p,]
-    jl_symbol.restype = c_void_p
-    return jl_symbol
+# def get_fn_symbol(lib):
+#     jl_symbol = lib.jl_symbol
+#     jl_symbol.argtypes = [c_char_p,]
+#     jl_symbol.restype = c_void_p
+#     return jl_symbol
 
-def get_fn_field_index(lib):
-    jl_field_index = lib.jl_field_index
-    jl_field_index.argtypes = [c_void_p, c_void_p, c_int]
-    jl_field_index.restype = c_int
-    return jl_field_index
+# def get_fn_field_index(lib):
+#     jl_field_index = lib.jl_field_index
+#     jl_field_index.argtypes = [c_void_p, c_void_p, c_int]
+#     jl_field_index.restype = c_int
+#     return jl_field_index
 
-def get_fn_get_field(lib):
-    jl_get_field = lib.jl_get_field
-    jl_get_field.argtypes = [c_void_p, c_char_p]
-    jl_get_field.restype = c_void_p
-    return jl_get_field
+# def get_fn_get_field(lib):
+#     jl_get_field = lib.jl_get_field
+#     jl_get_field.argtypes = [c_void_p, c_char_p]
+#     jl_get_field.restype = c_void_p
+#     return jl_get_field
 
-def get_fn_set_nth_field(lib):
-    jl_set_nth_field = lib.jl_set_nth_field
-    jl_set_nth_field.argtypes = [c_void_p, c_size_t, c_void_p]
-    jl_set_nth_field.restype = None
-    return jl_set_nth_field
+# def get_fn_set_nth_field(lib):
+#     jl_set_nth_field = lib.jl_set_nth_field
+#     jl_set_nth_field.argtypes = [c_void_p, c_size_t, c_void_p]
+#     jl_set_nth_field.restype = None
+#     return jl_set_nth_field
 
 
-def get_fn_box_int64(lib):
-    jl_box_int64 = lib.jl_box_int64
-    jl_box_int64.argtypes = [c_int64,]
-    jl_box_int64.restype = c_void_p
-    return jl_box_int64
+# def get_fn_box_int64(lib):
+#     jl_box_int64 = lib.jl_box_int64
+#     jl_box_int64.argtypes = [c_int64,]
+#     jl_box_int64.restype = c_void_p
+#     return jl_box_int64
 
 
 
