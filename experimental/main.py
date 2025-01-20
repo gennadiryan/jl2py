@@ -227,7 +227,7 @@ class JuliaVal:
         _setattr('fns', fns)
         _setattr('val', val)
 
-        _setattr('_convert_to', lambda _: object.__getattribute__(_, 'value') if isinstance(_, JuliaVal) else _)
+        _setattr('_convert_to', lambda _: object.__getattribute__(_, 'val') if isinstance(_, JuliaVal) else _)
 
         # _setattr('_eval_string', get_fn_eval_string(lib))
         # _setattr('_call', get_fn_call(lib))
