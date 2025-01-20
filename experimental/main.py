@@ -322,13 +322,62 @@ class JuliaVal:
         return res
     
 
+def get_ref_any_type(lib, fns):
+    jl_base_module = c_void_p.in_dll(lib, 'jl_base_module')
+    jl_main_module = c_void_p.in_dll(lib, 'jl_main_module')
+
+    jl_any_type = c_void_p.in_dll(lib, 'jl_any_type')
+
+    return jl.apply_type1(jl.get_global(jl_base_module, jl.symbol(b'RefValue')), jl_any_type)
+
+
 def init_refs(lib, fns):
     jl_base_module = c_void_p.in_dll(lib, 'jl_base_module')
     jl_main_module = c_void_p.in_dll(lib, 'jl_main_module')
 
-    jl_any_value = c_void_p.in_dll(lib, 'jl_any_value')
+    jl_any_type = c_void_p.in_dll(lib, 'jl_any_type')
 
-    # fns.
+    gc = jl.gc_enable(0)
+
+    val = jl.call0(jl.apply_type2(jl.get_global(jl_base_module, jl.symbol(b'IdDict')), jl_any_type, get_ref_any_type(lib, fns)))
+
+    var = jl.symbol(b'refs')
+    bp = jl.get_binding_wr(jl_main_module, var, 1)
+    jl.checked_assignment(bp, jl_main_module, var, val)
+
+    jl.gc_enable(gc)
+
+
+def add_ref(lib, fns, val):
+    jl_base_module = c_void_p.in_dll(lib, 'jl_base_module')
+    jl_main_module = c_void_p.in_dll(lib, 'jl_main_module')
+
+    gc = jl.gc_enable(0)
+
+    setindex = jl.get_global(jl_base_module, jl.symbol(b'setindex!'))
+    res = jl.call3(setindex, jl.get_global(jl_main_module, jl.symbol(b'refs')), jl.call1(get_ref_any_type(lib, fns), val), val)
+
+    jl.gc_enable(gc)
+
+    if res is None:
+        raise ValueError()
+
+
+def del_ref(lib, fns, val):
+    jl_base_module = c_void_p.in_dll(lib, 'jl_base_module')
+    jl_main_module = c_void_p.in_dll(lib, 'jl_main_module')
+
+    gc = jl.gc_enable(0)
+
+    delete = jl.get_global(jl_base_module, jl.symbol(b'delete!'))
+    res = jl.call2(delete, jl.get_global(jl_main_module, jl.symbol(b'refs')), val)
+
+    jl.gc_enable(gc)
+
+    if res is None:
+        raise ValueError()
+
+
 
 # def get_fn_eval_string(lib):
 #     jl_eval_string = lib.jl_eval_string
@@ -440,6 +489,7 @@ if __name__ == '__main__':
         jl_eval_string=((c_char_p,), c_void_p),
         
         jl_call=((c_void_p, c_void_p, c_uint32,), c_void_p),
+        jl_call0=((c_void_p,) * 1, c_void_p),
         jl_call1=((c_void_p,) * 2, c_void_p),
         jl_call2=((c_void_p,) * 3, c_void_p),
         jl_call3=((c_void_p,) * 4, c_void_p),
@@ -456,16 +506,29 @@ if __name__ == '__main__':
         jl_box_int64=((c_int64,), c_void_p),
 
 
-        # # init_refs()
-        # # jl_=((,), None),
+        # init_refs()
+        # jl_=((,), None),
 
-        # jl_gc_enable=((,), None),
+        jl_gc_enable=((c_int,), c_int),
+        jl_gc_is_enabled=(None, c_int),
 
-        # jl_get_binding_wr=((,), None),
-        # jl_get_global=((,), None),
-        # jl_checked_assignment=((,), None),
+        jl_get_binding_wr=((c_void_p, c_void_p, c_int,), c_void_p),
+        jl_get_global=((c_void_p, c_void_p,), c_void_p),
+        jl_checked_assignment=((c_void_p, c_void_p, c_void_p, c_void_p,), None),
 
-        # jl_apply_type2=((,), None),
+        jl_apply_type=((c_void_p, c_void_p, c_size_t,), c_void_p),
+        jl_apply_type1=((c_void_p,) * 2, c_void_p),
+        jl_apply_type2=((c_void_p,) * 3, c_void_p),
+        jl_apply_type3=((c_void_p,) * 4, c_void_p),
+        
+
+        # ptr_to_arr()
+        # jl_=((,), None),
+
+        jl_apply_tuple_type_v=((c_void_p, c_size_t,), c_void_p),
+        jl_new_structv=((c_void_p, c_void_p, c_uint32,), c_void_p),
+        jl_apply_array_type=((c_void_p, c_size_t,), c_void_p),
+        jl_ptr_to_array=((c_void_p, c_void_p, c_void_p, c_int,), c_void_p),
     )
 
     lib = JuliaLib(libpath).__enter__()
