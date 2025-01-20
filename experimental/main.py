@@ -376,6 +376,36 @@ def del_ref(lib, fns, val):
 
     if res is None:
         raise ValueError()
+    
+
+
+def ptr_to_arr(lib, fns, eltype, dims, data, own=True):
+    """
+    Returns an Array{`eltype`, `len(dims)`} with dimensions `dims` and `data` located at data
+
+    Args:
+        param1 (type1): desc1.
+    
+    Returns:
+        type0: desc0.
+    
+    Examples:
+        - Given python objects `a`, `l`, and `i`, s.t. `type(a) == list`, `type(l) == type(i) == int`, `l = dims[0] * ... * dims[len(dims) - 1]`, `len(a) = l`, `0 <= i < l`, and `type(a[i]) = int`, let `data = get_ctypes_arr(c_int64, *a)`.
+        - Given `np.ndarray` object `a` s.t. `len(a.shape) == 1` and `a.dtype == np.dtype('int64')`, let `data = a.ctypes.data_as(c_void_p)`.
+    """
+
+    jl_int64_type = c_void_p.in_dll(lib, 'jl_int64_type')
+    
+    val_dims = get_ctypes_arr(c_void_p, *map(jl.box_int64, dims))
+    val_dims_types = get_ctypes_arr(c_void_p, *((jl_int64_type,) * len(dims)))
+
+    val_dims_tup_type = jl.apply_tuple_type_v(val_dims_types, len(dims))
+    val_dims_tup = jl.new_structv(val_dims_tup_type, val_dims, len(dims))
+
+    val_arr_type = jl.apply_array_type(eltype, len(dims))
+    val_arr = jl.ptr_to_array(val_arr_type, data, val_dims_tup, int(own))
+
+    return val_arr
 
 
 
@@ -504,6 +534,8 @@ if __name__ == '__main__':
         jl_set_nth_field=((c_void_p, c_size_t, c_void_p,), None),
         
         jl_box_int64=((c_int64,), c_void_p),
+
+        jl_egal=((c_void_p, c_void_p,), c_void_p),
 
 
         # init_refs()
