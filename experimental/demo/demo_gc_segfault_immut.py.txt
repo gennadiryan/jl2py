@@ -1,0 +1,30 @@
+(env) gennadiryan@gennadiryan jl2py % DYLD_FALLBACK_LIBRARY_PATH=./target/lib:./target/lib/julia python3 -i experimental/main.py
+>>> init_refs(lib, jl)
+>>> println = jl.eval_string(b'println')
+>>> add_ref(lib, jl, println)
+>>> jl.call1(println, jl.eval_string(b'GC.gc()'))
+nothing
+4382851080
+>>> boxed0 = jl.box_int64(4)
+>>> boxed1 = jl.box_int64(20)
+>>> boxed2 = jl.box_int64(2048)
+>>> jl.eval_string(b'struct pt_immut\n\tx::Int\n\ty::Int\nend')
+4382851080
+>>> jl.eval_string(b'mutable struct pt_mut\n\tx::Int\n\ty::Int\nend')
+4382851080
+>>> jl.call1(println, jl.eval_string(b'GC.gc()'))
+nothing
+4382851080
+>>> jl.call1(println, boxed0)
+4
+4382851080
+>>> jl.call1(println, jl.typeof(boxed1))
+Int64
+4382851080
+>>> jl.call1(println, jl.typeof(boxed2))
+Core.Const
+4382851080
+>>> jl.call1(println, boxed2)
+Core.Const(BoundsError)
+4382851080
+>>> quit()
