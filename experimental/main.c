@@ -3,6 +3,8 @@
 #include "julia.h"
 #include "julia_init.h"
 
+// #include "julia_internal.h" // used for jl_atomic_sym
+
 
 void init_refs();
 int add_ref(jl_value_t *);
@@ -219,6 +221,135 @@ void test_array(void) {
     printf("%d\n", val_arr_nd != 0);
     jl_call1(println, (jl_value_t *) val_arr_nd);
     jl_call1(println, jl_typeof(val_arr_nd));
+}
+
+// BEGIN imitate JuliaLang/julia src/builtins.c::jl_f_memoryref (which becomes Core.memoryrefnew)
+
+jl_value_t *memoryref(jl_genericmemoryref_t *m, size_t i) {
+    size_t sz;
+
+    const jl_datatype_layout_t *layout = ((jl_datatype_t *) jl_typetagof(m->mem))->layout;
+    if (layout->flags.arrayelem_isboxed)
+        sz = sizeof(jl_value_t *);
+    else if (layout->flags.arrayelem_isunion || (layout->size == 0))
+        sz = 1;
+    else
+        sz = layout->size;
+
+    char *data = (char *)(m->ptr_or_offset) + (sz * i);
+    // if (data >= m->mem->length) // wrong for all but union (second conditional)
+    //     return 0;
+    return (jl_value_t *) jl_new_memoryref((jl_value_t *) jl_typetagof(m), m->mem, data);
+}
+
+// END
+
+// // BEGIN imitate JuliaLang/julia src/builtins.c::jl_f_memoryref[get,set] (which becomes Core.memoryref[get,set!])
+
+jl_value_t *memoryrefget(jl_genericmemoryref_t *m) {
+    return jl_memoryrefget(*m, (jl_tparam0((jl_datatype_t *) jl_typetagof(m->mem)) == ((jl_value_t *) jl_symbol("atomic"))));
+}
+
+void memoryrefset(jl_genericmemoryref_t *m, jl_value_t *rhs) {
+    // jl_memoryrefset(m, rhs, jl_tparam0(jl_typetagof(m->mem)) == ((jl_value_t *) jl_atomic_sym));
+    jl_memoryrefset(*m, rhs, (jl_tparam0((jl_datatype_t *) jl_typetagof(m->mem)) == ((jl_value_t *) jl_symbol("atomic"))));
+}
+
+// // END
+
+void test_array_2(void) {
+    jl_value_t *println = jl_eval_string("println");
+
+    // jl_value_t *ty = (jl_value_t *) jl_int64_type;
+    // int ndims = 2;
+    // long dims[2] = {2, 2};
+    // long data[4] = {1, 2, 3, 4};
+
+    jl_value_t *ty = (jl_value_t *) jl_int64_type;
+    int ndims = 3;
+    long dims[3] = {2, 2, 3};
+    long data[12] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+
+    jl_value_t *val_arr_nd = ptr_to_arr(ty, ndims, dims, (void *) data, 0);
+    add_ref(val_arr_nd);
+
+    if (val_arr_nd == 0) {
+        printf("Error wrapping ptr as array\n");
+        return;
+    }
+
+    jl_genericmemoryref_t *val_arr_ref = &((jl_array_t *) val_arr_nd)->ref;
+    jl_genericmemory_t *val_arr_mem = val_arr_ref->mem;
+
+    jl_call1(println, val_arr_nd);
+    jl_call1(println, (jl_value_t *) val_arr_ref);
+    jl_call1(println, (jl_value_t *) val_arr_mem);
+
+    jl_value_t *tag = (jl_value_t *) jl_typetagof(val_arr_mem);
+    jl_value_t *param = jl_tparam0(tag);
+    jl_value_t *atomic_sym = (jl_value_t *) jl_symbol("atomic");
+    jl_value_t *not_atomic_sym = (jl_value_t *) jl_symbol("not_atomic");
+
+    printf("%lu, %lu, %lu\n", (unsigned long) param, (unsigned long) atomic_sym, (unsigned long) not_atomic_sym);
+
+    jl_value_t *ref_10 = memoryref(val_arr_ref, 9);
+    memoryrefset((jl_genericmemoryref_t *) ref_10, jl_box_int64(100));
+    jl_value_t *val_10 = memoryrefget((jl_genericmemoryref_t *) ref_10);
+
+    jl_call1(println, val_arr_nd);
+    jl_call1(println, (jl_value_t *) val_arr_ref);
+    jl_call1(println, (jl_value_t *) val_arr_mem);
+    jl_call1(println, val_10);
+    jl_call1(println, jl_typeof(val_10));
+}
+
+void test_array_3(void) {
+    jl_value_t *println = jl_eval_string("println");
+
+    // jl_value_t *ty = (jl_value_t *) jl_int64_type;
+    // int ndims = 2;
+    // long dims[2] = {2, 2};
+    // long data[4] = {1, 2, 3, 4};
+
+    // jl_value_t *ty = (jl_value_t *) jl_int64_type;
+    // int ndims = 3;
+    // long dims[3] = {2, 2, 3};
+    // long data[12] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
+
+    // jl_value_t *val_arr_nd = ptr_to_arr(ty, ndims, dims, (void *) data, 0);
+    // add_ref(val_arr_nd);
+    
+    jl_value_t *val_arr_nd = jl_eval_string("Union{Int64, Float64}[1, 2, 3, 4, 5, 6, 7, 8, 9, 10., 11, 12]");
+    add_ref(val_arr_nd);
+
+    if (val_arr_nd == 0) {
+        printf("Error wrapping ptr as array\n");
+        return;
+    }
+
+    jl_genericmemoryref_t *val_arr_ref = &((jl_array_t *) val_arr_nd)->ref;
+    jl_genericmemory_t *val_arr_mem = val_arr_ref->mem;
+
+    jl_call1(println, val_arr_nd);
+    jl_call1(println, (jl_value_t *) val_arr_ref);
+    jl_call1(println, (jl_value_t *) val_arr_mem);
+
+    jl_value_t *tag = (jl_value_t *) jl_typetagof(val_arr_mem);
+    jl_value_t *param = jl_tparam0(tag);
+    jl_value_t *atomic_sym = (jl_value_t *) jl_symbol("atomic");
+    jl_value_t *not_atomic_sym = (jl_value_t *) jl_symbol("not_atomic");
+
+    printf("%lu, %lu, %lu\n", (unsigned long) param, (unsigned long) atomic_sym, (unsigned long) not_atomic_sym);
+
+    jl_value_t *ref_10 = memoryref(val_arr_ref, 9);
+    memoryrefset((jl_genericmemoryref_t *) ref_10, jl_box_int64(100));
+    jl_value_t *val_10 = memoryrefget((jl_genericmemoryref_t *) ref_10);
+
+    jl_call1(println, val_arr_nd);
+    jl_call1(println, (jl_value_t *) val_arr_ref);
+    jl_call1(println, (jl_value_t *) val_arr_mem);
+    jl_call1(println, val_10);
+    jl_call1(println, jl_typeof(val_10));
 }
 
 void test_custom(void) {
@@ -616,16 +747,19 @@ int main(int argc, char **argv) {
 
     init_refs();
 
-    // test_segfault_main();
-    // test_mutable();
+    // // test_segfault_main();
+    // // test_mutable();
 
-    // test_tuple();
-    // test_array();
-    test_custom();
-    test_custom_2();
-    test_custom_3();
-    test_custom_4();
-    test_custom_5();
+    // // test_tuple();
+    // // test_array();
+    // test_custom();
+    // test_custom_2();
+    // test_custom_3();
+    // test_custom_4();
+    // test_custom_5();
+
+    // test_array_2();
+    test_array_3();
 
     shutdown_julia(0);
 
