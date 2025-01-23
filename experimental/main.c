@@ -352,6 +352,18 @@ void test_array_3(void) {
     jl_call1(println, jl_typeof(val_10));
 }
 
+void test_array_4(void) {
+    jl_value_t *boxed = jl_box_int64(2048); add_ref(boxed);
+    jl_value_t *boxed2 = jl_box_int64(2048); add_ref(boxed2);
+
+    printf("%ld\n", *((long *) ((jl_value_t **) boxed)));
+    printf("%ld\n", *((long *) (boxed)));
+
+    printf("%lu, %lu\n", (unsigned long) boxed, (unsigned long) boxed2);
+    printf("%lu, %lu\n", (unsigned long) ((long *) boxed), (unsigned long) ((long *) boxed2));
+    printf("%ld, %ld\n", *((long *) boxed), *((long *) boxed2));
+}
+
 void test_custom(void) {
     jl_value_t *println = jl_eval_string("println");
     jl_value_t *getindex = jl_eval_string("getindex");
@@ -628,6 +640,24 @@ void test_tuple(void) {
     jl_call1(println, vals_to_tup(2, val_pair));
 }
 
+void test_svec_1(void) {
+    jl_value_t *println = jl_eval_string("println"); add_ref(println);
+
+    jl_eval_string("mutable struct pt; x::Int; y::Int; end");
+    jl_value_t *ty = jl_eval_string("pt"); add_ref(ty);
+
+    jl_value_t *ty_name = jl_get_nth_field(ty, jl_field_index((jl_datatype_t *) jl_typeof(ty), jl_symbol("name"), 0));
+    jl_value_t *ty_names = jl_get_nth_field(ty_name, jl_field_index((jl_datatype_t *) jl_typeof(ty_name), jl_symbol("names"), 0));
+    size_t ty_names_len = *((size_t *) ty_names);
+    jl_value_t *ty_names_symbols = ((char *) ty_names) + sizeof(size_t);
+
+    jl_call1(println, ty_name);
+    jl_call1(println, jl_typeof(ty_name));
+    jl_call1(println, ty_names);
+    jl_call1(println, jl_typeof(ty_names));
+    jl_call1(println, jl_box_uint64(ty_names_len));
+}
+
 
 char *char_to_binstr(char bt) {
     char *binstr = malloc(sizeof(char) * 9);
@@ -747,19 +777,22 @@ int main(int argc, char **argv) {
 
     init_refs();
 
-    // // test_segfault_main();
-    // // test_mutable();
+    // // // test_segfault_main();
+    // // // test_mutable();
 
-    // // test_tuple();
-    // // test_array();
-    // test_custom();
-    // test_custom_2();
-    // test_custom_3();
-    // test_custom_4();
-    // test_custom_5();
+    // // // test_tuple();
+    // // // test_array();
+    // // test_custom();
+    // // test_custom_2();
+    // // test_custom_3();
+    // // test_custom_4();
+    // // test_custom_5();
 
-    // test_array_2();
-    test_array_3();
+    // // test_array_2();
+    // test_array_3();
+    // test_array_4();
+
+    test_svec_1();
 
     shutdown_julia(0);
 
