@@ -320,6 +320,49 @@ class JuliaVal:
 
         res = fns.call(val, args, nargs) # TODO: handle bad return values and possibly exceptions
         return res
+        # return JuliaVal(fns, res)
+
+    # def __del__(self,):
+    #     _getattr = lambda *_: object.__getattribute__(self, *_)
+    #     _setattr = lambda *_: object.__setattr__(self, *_)
+
+    #     fns = _getattr('fns')
+    #     val = _getattr('val')
+
+    # def __delattr__(self, name):
+    #     _getattr = lambda *_: object.__getattribute__(self, *_)
+    #     _setattr = lambda *_: object.__setattr__(self, *_)
+
+    #     fns = _getattr('fns')
+    #     val = _getattr('val')
+
+    def __dir__(self,):
+        # return list()
+
+        """
+        Consider simplifying implementation
+        """
+
+        _getattr = lambda *_: object.__getattribute__(self, *_)
+        _setattr = lambda *_: object.__setattr__(self, *_)
+
+        fns = _getattr('fns')
+        val = _getattr('val')
+
+        ty = fns.typeof(val)
+        ty_name = fns.get_nth_field(ty, fns.field_index(fns.typeof(ty), fns.symbol(b'name'), 0))
+        ty_names = fns.get_nth_field(ty_name, fns.field_index(fns.typeof(ty_name), fns.symbol(b'names'), 0))
+        ty_names_len = c_size_t.from_address(ty_names)
+        
+        ty_names_as_symbol = [c_void_p.from_address(ty_names + ctypes.sizeof(ty_names_len) + (ctypes.sizeof(c_void_p) * i)) for i in range(ty_names_len.value)]
+        ty_names_as_str = [ctypes.string_at(name_as_symbol.value + (ctypes.sizeof(c_void_p) * 3)).decode() for name_as_symbol in ty_names_as_symbol]
+
+        return ty_names_as_str
+
+    def __repr__(self,):
+        return super().__repr__()
+
+
     
 
 def get_ref_any_type(lib, fns):
@@ -407,6 +450,8 @@ def ptr_to_arr(lib, fns, eltype, dims, data, own=True):
 
     return val_arr
 
+
+# class JuliaValGC()
 
 
 # def get_fn_eval_string(lib):
