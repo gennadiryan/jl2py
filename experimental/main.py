@@ -201,16 +201,11 @@ class JuliaVal:
         _convert_to (Callable): handler for converting 
 
     TODO:
-        - streamline getting jl_* fns from _lib and setting ctypes type signature (as in JuliaLibUtils)
-        - in __getattribute__, replace _get_field with (_field_idx, _get_nth_field) (akin to (_field_idx, _set_nth_field) in __setattr__)
-
         - handle global rooting (to prevent GC on Julia side) at __init__ (and/or __new__?), __del__, __setattr__, and __delattr__
         - wrap julia library fns (eval_string, call, call[1,2,3], etc.) into Dict or similar structure to simplify their access within methods/avoid polluting each method local namespaces
         - clarify semantics for _convert_to (currently accepts either raw C ptrs or accesses the _val field of a JuliaVal; used on args upon function call)
         - determine semantics for _convert_from (used on retvalue after function call)
         - determine semantics for storing Julia datatypes and their connection with _convert_to, _convert_from implementation
-        - implement __repr__
-        - implement __dir__
         - optional; implement __eq__ (underlied by jl_egal) and possibly __hash__
         - optional; implement __lt__/__gt__ if the underlying Julia type allows for it
         - optional; implement __str__, __format__
@@ -218,6 +213,12 @@ class JuliaVal:
 
     DONE:
         - implement __setattr__
+
+        - streamline getting jl_* fns from _lib and setting ctypes type signature (as in JuliaLibUtils)
+        - in __getattribute__, replace _get_field with (_field_idx, _get_nth_field) (akin to (_field_idx, _set_nth_field) in __setattr__)
+
+        - implement __repr__
+        - implement __dir__
     """
 
     def __init__(self, fns, val):
@@ -228,6 +229,7 @@ class JuliaVal:
         _setattr('val', val)
 
         _setattr('_convert_to', lambda _: object.__getattribute__(_, 'val') if isinstance(_, JuliaVal) else _)
+        _setattr('_convert_from', lambda _: JuliaVal(fns, _))
 
         # _setattr('_eval_string', get_fn_eval_string(lib))
         # _setattr('_call', get_fn_call(lib))
@@ -274,7 +276,8 @@ class JuliaVal:
         fld = fns.get_nth_field(val, idx)
         if fld is None:
             raise AttributeError(f'{type(self)} object has no attribute {name}')
-        return fld
+        # return fld
+        return JuliaVal(fns, fld)
     
     def __setattr__(self, name, value):
         if (len(name) == 0) or (len(name) > 0 and name[0] == '_'):
@@ -285,6 +288,8 @@ class JuliaVal:
 
         fns = _getattr('fns')
         val = _getattr('val')
+
+        value = _getattr('_convert_to')(value)
         
         # _typeof = _getattr('_typeof')
         # _symbol = _getattr('_symbol')
@@ -319,8 +324,8 @@ class JuliaVal:
         nargs = len(args)
 
         res = fns.call(val, args, nargs) # TODO: handle bad return values and possibly exceptions
-        return res
-        # return JuliaVal(fns, res)
+        # return res
+        return JuliaVal(fns, res)
 
     # def __del__(self,):
     #     _getattr = lambda *_: object.__getattribute__(self, *_)
@@ -360,7 +365,21 @@ class JuliaVal:
         return ty_names_as_str
 
     def __repr__(self,):
-        return super().__repr__()
+        # return super().__repr__()
+
+        jl_base_module = c_void_p.in_dll(lib, 'jl_base_module')
+
+        _getattr = lambda *_: object.__getattribute__(self, *_)
+        _setattr = lambda *_: object.__setattr__(self, *_)
+
+        fns = _getattr('fns')
+        val = _getattr('val')
+
+        fn_repr = jl.get_global(jl_base_module, jl.symbol(b'repr'))
+        val_res = jl.call1(fn_repr, val)
+        val_str = ctypes.string_at(jl.string_ptr(val_res)).decode()
+
+        return val_str
 
 
     
@@ -579,6 +598,8 @@ if __name__ == '__main__':
         jl_set_nth_field=((c_void_p, c_size_t, c_void_p,), None),
         
         jl_box_int64=((c_int64,), c_void_p),
+        jl_unbox_int64=((c_void_p,), c_int64),
+        jl_string_ptr=((c_void_p,), c_char_p),
 
         jl_egal=((c_void_p, c_void_p,), c_void_p),
 
