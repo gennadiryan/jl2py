@@ -469,6 +469,17 @@ def ptr_to_arr(lib, fns, eltype, dims, data, own=True):
 
     return val_arr
 
+def arr_to_ptr(lib, fns, ctypes_dtype, np_dtype, shape, len, arr):
+    import numpy as np
+
+    ptr = fns.unbox_voidpointer(object.__getattribute__(arr.ref.mem.ptr, 'val'))
+    ctypes_arr = (ctypes_dtype * len).from_address(ptr)
+    np_arr = np.ctypeslib.as_array(ctypes_arr, shape)
+
+    assert np_arr.dtype == np_dtype
+    
+    return np_arr
+
 
 # class JuliaValGC()
 
@@ -598,7 +609,9 @@ if __name__ == '__main__':
         jl_set_nth_field=((c_void_p, c_size_t, c_void_p,), None),
         
         jl_box_int64=((c_int64,), c_void_p),
+        jl_box_voidpointer=((c_void_p,), c_void_p),
         jl_unbox_int64=((c_void_p,), c_int64),
+        jl_unbox_voidpointer=((c_void_p,), c_void_p),
         jl_string_ptr=((c_void_p,), c_char_p),
 
         jl_egal=((c_void_p, c_void_p,), c_void_p),
