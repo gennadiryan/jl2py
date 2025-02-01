@@ -277,7 +277,8 @@ class JuliaVal:
         if fld is None:
             raise AttributeError(f'{type(self)} object has no attribute {name}')
         # return fld
-        return JuliaVal(fns, fld)
+        # return JuliaVal(fns, fld)
+        return _getattr('_convert_from')(fld)
     
     def __setattr__(self, name, value):
         if (len(name) == 0) or (len(name) > 0 and name[0] == '_'):
@@ -325,7 +326,8 @@ class JuliaVal:
 
         res = fns.call(val, args, nargs) # TODO: handle bad return values and possibly exceptions
         # return res
-        return JuliaVal(fns, res)
+        # return JuliaVal(fns, res)
+        return _getattr('_convert_from')(res)
 
     # def __del__(self,):
     #     _getattr = lambda *_: object.__getattribute__(self, *_)
@@ -477,7 +479,7 @@ def arr_to_ptr(lib, fns, ctypes_dtype, np_dtype, shape, len, arr):
     np_arr = np.ctypeslib.as_array(ctypes_arr, shape)
 
     assert np_arr.dtype == np_dtype
-    
+
     return np_arr
 
 
