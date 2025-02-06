@@ -1,14 +1,13 @@
 import os
 import sys
-
+import platform
 # sys.path.append(os.path.split(os.path.realpath(__file__))[0])
 
 from ..main import *
 
-
 def get_jl():
-    libdir = "/Users/gennadiryan/.julia/dev/jl2py/target/lib"
-    libname = "libjl2py.dylib"
+    libdir = "./jl2py/target/lib"
+    libname = "libjl2py.dylib" if platform.system() == "Darwin" else "libjl2py.so"
     libpath = os.path.join(libdir, libname)
 
     libfuncs = dict(
@@ -103,7 +102,7 @@ def get_jl():
 if __name__ == '__main__':
     jl = get_jl()
 
-    with open('/Users/gennadiryan/.julia/dev/jl2py/demo/quantum_collocation_demo.jl', 'r') as f:
+    with open('./jl2py/demo/quantum_collocation_demo.jl', 'r') as f:
         jl_source = f.read()
     
     for lines in [[_ for _ in part.split('\n') if len(_) > 0] for part in jl_source.split('\n' * 2)]:
