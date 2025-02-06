@@ -5,6 +5,7 @@ from typing import Any, Generic, List, Optional, Set, Tuple, TypeVar, Union
 import os
 import random
 import ctypes, _ctypes
+import platform
 from ctypes import cdll, c_int, c_char_p, c_void_p
 
 
@@ -75,7 +76,7 @@ def str2buf(s: str) -> _ctypes.Array:
 # cmd = "DYLD_FALLBACK_LIBRARY_PATH=target/lib:target/lib/julia python3 main.py"
 if __name__ == '__main__':
     libdir = "target/lib"
-    libname = "libjl2py.dylib"
+    libname = "libjl2py.dylib" if platform.system() == "Darwin" else "libjl2py.so"
     libpath = os.path.join(libdir, libname)
 
     # libfuncs = dict(
