@@ -495,6 +495,18 @@ class JuliaValGC(JuliaVal):
         _setattr('_convert_to', lambda _: object.__getattribute__(_, 'val') if isinstance(_, JuliaVal) else _)
         _setattr('_convert_from', lambda _: JuliaValGC(lib, fns, _))
 
+        add_ref(lib, fns, val)
+    
+    def __del__(self):
+        _getattr = lambda *_: object.__getattribute__(self, *_)
+        _setattr = lambda *_: object.__setattr__(self, *_)
+
+        lib = _getattr('lib')
+        fns = _getattr('fns')
+        val = _getattr('val')
+
+        del_ref(lib, fns, val)
+
 
 
 # def get_fn_eval_string(lib):
