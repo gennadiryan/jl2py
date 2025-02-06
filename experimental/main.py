@@ -483,7 +483,18 @@ def arr_to_ptr(lib, fns, ctypes_dtype, np_dtype, shape, len, arr):
     return np_arr
 
 
-# class JuliaValGC()
+class JuliaValGC(JuliaVal):
+    def __init__(self, lib, fns, val):
+        _getattr = lambda *_: object.__getattribute__(self, *_)
+        _setattr = lambda *_: object.__setattr__(self, *_)
+
+        _setattr('lib', lib)
+        _setattr('fns', fns)
+        _setattr('val', val)
+
+        _setattr('_convert_to', lambda _: object.__getattribute__(_, 'val') if isinstance(_, JuliaVal) else _)
+        _setattr('_convert_from', lambda _: JuliaValGC(lib, fns, _))
+
 
 
 # def get_fn_eval_string(lib):
