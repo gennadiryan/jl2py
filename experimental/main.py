@@ -3,6 +3,7 @@ from collections.abc import Callable, Mapping, MutableMapping
 from typing import Any, Generic, List, Optional, Set, Tuple, TypeVar, Union
 
 import os
+import platform
 import random
 import ctypes, _ctypes
 from ctypes import cdll, c_int, c_int32, c_int64, c_uint, c_uint32, c_uint64, c_size_t, c_char_p, c_void_p
@@ -60,7 +61,7 @@ class as_object(object):
         object.__setattr__(self, 'prefix', prefix)
         object.__setattr__(self, 'it', kwargs)
     def __getattribute__(self, name):
-        return object.__getattribute__(self, 'it').get(f'{object.__getattribute__(self, 'prefix')}{name}', None)
+        return object.__getattribute__(self, 'it').get(f'{object.__getattribute__(self, "prefix")}{name}', None)
     def __dir__(self):
         prefix = object.__getattribute__(self, 'prefix')
         return sorted([k[len(prefix):] for k in object.__getattribute__(self, 'it').keys() if k[:len(prefix)] == prefix])
@@ -330,6 +331,9 @@ class JuliaVal:
             raise ValueError()
     
     def __call__(self, *args, **kwds):
+        if kwarg.__len__() != 0:
+            print(kwds)
+
         _getattr = lambda *_: object.__getattribute__(self, *_)
         _setattr = lambda *_: object.__setattr__(self, *_)
 
@@ -339,6 +343,7 @@ class JuliaVal:
         args = get_ctypes_arr(c_void_p, *map(_getattr('_convert_to'), args))
         nargs = len(args)
 
+        # TODO(jack-champagne): add kwargs call here
         res = fns.call(val, args, nargs) # TODO: handle bad return values and possibly exceptions
         # return res
         # return JuliaVal(fns, res)
@@ -659,8 +664,8 @@ def get_ctypes_arr(ty, *args):
 
 # cmd = "DYLD_FALLBACK_LIBRARY_PATH=target/lib:target/lib/julia python3 main.py"
 if __name__ == '__main__':
-    libdir = "/Users/gennadiryan/.julia/dev/jl2py/target/lib"
-    libname = "libjl2py.dylib"
+    libdir = "./target/lib"
+    libname = "libjl2py.dylib" if platform.system() == "Darwin" else "libjl2py.so"
     libpath = os.path.join(libdir, libname)
 
     libfuncs = dict(
