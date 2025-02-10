@@ -3,3 +3,4 @@ __pycache__
 demo/__pycache__
 target
 main.o
+/experimental/TestPackage/Manifest.toml
