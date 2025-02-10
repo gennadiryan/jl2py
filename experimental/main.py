@@ -65,12 +65,21 @@ class as_object(object):
         prefix = object.__getattribute__(self, 'prefix')
         return sorted([k[len(prefix):] for k in object.__getattribute__(self, 'it').keys() if k[:len(prefix)] == prefix])
 
+# class lib_as_object(object):
+#     def __init__(self, lib, prefix, funcs=None, vars=None):
+#         object.__setattr__(self, 'lib', lib)
+#         object.__setattr__(self, 'prefix', prefix)
+#         object.__setattr__(self, 'funcs', funcs)
+#         object.__setattr__(self, 'vars', vars)
+    
+#     def __getattribute__(self, name):
+#         return object.__getattribute__(self, '')
 
 class CDLLUtils:
-    def __init__(self, lib, funcs=None):
+    def __init__(self, lib, funcs=None, vars=None):
         self.lib = lib
         self.funcs = dict([(name, self._register_func(name, argtypes=argtypes, restype=restype)) for name, (argtypes, restype) in funcs.items()] if funcs is not None else [])
-        # self.funcs = funcs
+        self.vars = dict([(name, self._register_var(name, vartype)) for name, vartype in vars.items()] if vars is not None else [])
     
     def _register_func(self, name, argtypes=None, restype=None):
         func = getattr(self.lib, name, None)
@@ -81,6 +90,12 @@ class CDLLUtils:
             func.restype = restype if restype is not None else None
 
         return func
+
+    def _register_var(self, name, vartype=None):
+        if vartype is not None:
+            return lambda: vartype.in_dll(self.lib, name)
+        
+        return None
 
 
 
@@ -483,7 +498,63 @@ def arr_to_ptr(lib, fns, ctypes_dtype, np_dtype, shape, len, arr):
     return np_arr
 
 
-# class JuliaValGC()
+def get_nt(lib, fns, names, vals, tys):
+    assert len(names) == len(vals) == len(tys)
+    l = len(names)
+
+    carr_names = get_ctypes_arr(c_void_p, *[fns.symbol(name.encode()) for name in names])
+    carr_vals = get_ctypes_arr(c_void_p, *vals)
+    carr_tys = get_ctypes_arr(c_void_p, *tys)
+
+    tup_names_ty = fns.apply_tuple_type_v(get_ctypes_arr(c_void_p, *([fns.symbol_type()] * l)), l)
+    tup_names = fns.new_structv(tup_names_ty, carr_names, l)
+    tup_vals_ty = fns.apply_tuple_type_v(carr_tys, l)
+    # tup_vals = fns.new_structv(tup_vals_ty, carr_vals, l)
+    nt_ty = fns.apply_type2(fns.namedtuple_type(), tup_names, tup_vals_ty)
+    nt = fns.new_structv(nt_ty, carr_vals, l)
+
+    return nt
+
+def call_with_kwargs(lib, fns, fn, args, names, vals, tys):
+    # _getattr = lambda *_: object.__getattribute__(*_)
+
+    l = len(args)
+
+    nt = get_nt(lib, fns, names, vals, tys)
+    carr_args = get_ctypes_arr(c_void_p, *(nt, fn, *args))
+
+    return fns.call(fns.kwcall_func(), carr_args, l + 2)
+
+
+
+
+    
+
+
+class JuliaValGC(JuliaVal):
+    def __init__(self, lib, fns, val):
+        _getattr = lambda *_: object.__getattribute__(self, *_)
+        _setattr = lambda *_: object.__setattr__(self, *_)
+
+        _setattr('lib', lib)
+        _setattr('fns', fns)
+        _setattr('val', val)
+
+        _setattr('_convert_to', lambda _: object.__getattribute__(_, 'val') if isinstance(_, JuliaVal) else _)
+        _setattr('_convert_from', lambda _: JuliaValGC(lib, fns, _))
+
+        add_ref(lib, fns, val)
+    
+    def __del__(self):
+        _getattr = lambda *_: object.__getattribute__(self, *_)
+        _setattr = lambda *_: object.__setattr__(self, *_)
+
+        lib = _getattr('lib')
+        fns = _getattr('fns')
+        val = _getattr('val')
+
+        del_ref(lib, fns, val)
+
 
 
 # def get_fn_eval_string(lib):
@@ -643,12 +714,66 @@ if __name__ == '__main__':
         jl_apply_array_type=((c_void_p, c_size_t,), c_void_p),
         jl_ptr_to_array=((c_void_p, c_void_p, c_void_p, c_int,), c_void_p),
     )
+    libvars = dict(
+        jl_core_module=c_void_p,
+        jl_base_module=c_void_p,
+        jl_main_module=c_void_p,
+        jl_top_module=c_void_p,
+
+
+        jl_any_type=c_void_p,
+        jl_type_type=c_void_p,
+        jl_typename_type=c_void_p,
+        jl_type_typename=c_void_p,
+        jl_symbol_type=c_void_p,
+        jl_simplevector_type=c_void_p,
+        jl_tuple_typename=c_void_p,
+        jl_anytuple_type=c_void_p,
+        jl_emptytuple_type=c_void_p,
+        jl_anytuple_type_type=c_void_p,
+        jl_function_type=c_void_p,
+        jl_module_type=c_void_p,
+        jl_densearray_type=c_void_p,
+        jl_array_type=c_void_p,
+        jl_array_typename=c_void_p,
+        jl_genericmemory_type=c_void_p,
+        jl_genericmemory_typename=c_void_p,
+        jl_genericmemoryref_type=c_void_p,
+        jl_genericmemoryref_typename=c_void_p,
+        jl_weakref_type=c_void_p,
+        jl_abstractstring_type=c_void_p,
+        jl_string_type=c_void_p,
+
+        jl_bool_type=c_void_p,
+        jl_uint8_type=c_void_p,
+        jl_int64_type=c_void_p,
+        jl_nothing_type=c_void_p,
+        jl_voidpointer_type=c_void_p,
+        jl_uint8pointer_type=c_void_p,
+        jl_pointer_type=c_void_p,
+        jl_ref_type=c_void_p,
+        jl_pointer_typename=c_void_p,
+        jl_namedtuple_type=c_void_p,
+        jl_namedtuple_typename=c_void_p,
+
+        jl_empty_svec=c_void_p,
+        jl_emptytuple=c_void_p,
+        jl_true=c_void_p,
+        jl_false=c_void_p,
+        jl_nothing=c_void_p,
+        jl_kwcall_func=c_void_p,
+        
+        # jl_libdl_dlopen_func=c_void_p,
+    )
 
     lib = JuliaLib(libpath).__enter__()
-    libutils = CDLLUtils(lib, funcs=libfuncs)
+    libutils = CDLLUtils(lib, funcs=libfuncs, vars=libvars)
     # libfuncs = libutils.funcs
 
     # jl_eval, jl_call1, println = run_experimental(lib)
     # jl = box('jl_', **libfuncs)
 
-    jl = as_object('jl_', **(libutils.funcs))
+    jl = as_object('jl_', **(libutils.funcs), **(libutils.vars))
+
+    init_refs(lib, jl)
+    println = JuliaValGC(lib, jl, jl.eval_string(b'println'))
