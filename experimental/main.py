@@ -238,11 +238,14 @@ class JuliaVal:
         - implement __dir__
     """
 
-    def __init__(self, fns, val):
+    fns = None # placeholder
+
+    def __init__(self, val):
         _getattr = lambda *_: object.__getattribute__(self, *_)
         _setattr = lambda *_: object.__setattr__(self, *_)
 
-        _setattr('fns', fns)
+        # _setattr('fns', fns)
+        fns = _getattr('fns')
         _setattr('val', val)
 
         _setattr('_convert_to', lambda _: object.__getattribute__(_, 'val') if isinstance(_, JuliaVal) else _)
@@ -390,7 +393,7 @@ class JuliaVal:
     def __repr__(self,):
         # return super().__repr__()
 
-        jl_base_module = c_void_p.in_dll(lib, 'jl_base_module')
+        # jl_base_module = c_void_p.in_dll(lib, 'jl_base_module')
 
         _getattr = lambda *_: object.__getattribute__(self, *_)
         _setattr = lambda *_: object.__setattr__(self, *_)
@@ -398,73 +401,73 @@ class JuliaVal:
         fns = _getattr('fns')
         val = _getattr('val')
 
-        fn_repr = jl.get_global(jl_base_module, jl.symbol(b'repr'))
-        val_res = jl.call1(fn_repr, val)
-        val_str = ctypes.string_at(jl.string_ptr(val_res)).decode()
+        fn_repr = fns.get_global(fns.base_module(), fns.symbol(b'repr'))
+        val_res = fns.call1(fn_repr, val)
+        val_str = ctypes.string_at(fns.string_ptr(val_res)).decode()
 
         return val_str
 
 
     
 
-def get_ref_any_type(lib, fns):
-    jl_base_module = c_void_p.in_dll(lib, 'jl_base_module')
-    jl_main_module = c_void_p.in_dll(lib, 'jl_main_module')
+def get_ref_any_type(fns):
+    # jl_base_module = c_void_p.in_dll(lib, 'jl_base_module')
+    # jl_main_module = c_void_p.in_dll(lib, 'jl_main_module')
 
-    jl_any_type = c_void_p.in_dll(lib, 'jl_any_type')
+    # jl_any_type = c_void_p.in_dll(lib, 'jl_any_type')
 
-    return jl.apply_type1(jl.get_global(jl_base_module, jl.symbol(b'RefValue')), jl_any_type)
-
-
-def init_refs(lib, fns):
-    jl_base_module = c_void_p.in_dll(lib, 'jl_base_module')
-    jl_main_module = c_void_p.in_dll(lib, 'jl_main_module')
-
-    jl_any_type = c_void_p.in_dll(lib, 'jl_any_type')
-
-    gc = jl.gc_enable(0)
-
-    val = jl.call0(jl.apply_type2(jl.get_global(jl_base_module, jl.symbol(b'IdDict')), jl_any_type, get_ref_any_type(lib, fns)))
-
-    var = jl.symbol(b'refs')
-    bp = jl.get_binding_wr(jl_main_module, var, 1)
-    jl.checked_assignment(bp, jl_main_module, var, val)
-
-    jl.gc_enable(gc)
+    return fns.apply_type1(fns.get_global(fns.base_module(), fns.symbol(b'RefValue')), fns.any_type())
 
 
-def add_ref(lib, fns, val):
-    jl_base_module = c_void_p.in_dll(lib, 'jl_base_module')
-    jl_main_module = c_void_p.in_dll(lib, 'jl_main_module')
+def init_refs(fns):
+    # jl_base_module = c_void_p.in_dll(lib, 'jl_base_module')
+    # jl_main_module = c_void_p.in_dll(lib, 'jl_main_module')
 
-    gc = jl.gc_enable(0)
+    # jl_any_type = c_void_p.in_dll(lib, 'jl_any_type')
 
-    setindex = jl.get_global(jl_base_module, jl.symbol(b'setindex!'))
-    res = jl.call3(setindex, jl.get_global(jl_main_module, jl.symbol(b'refs')), jl.call1(get_ref_any_type(lib, fns), val), val)
+    gc = fns.gc_enable(0)
 
-    jl.gc_enable(gc)
+    val = fns.call0(fns.apply_type2(fns.get_global(fns.base_module(), fns.symbol(b'IdDict')), fns.any_type(), get_ref_any_type(fns)))
+
+    var = fns.symbol(b'refs')
+    bp = fns.get_binding_wr(fns.main_module(), var, 1)
+    fns.checked_assignment(bp, fns.main_module(), var, val)
+
+    fns.gc_enable(gc)
+
+
+def add_ref(fns, val):
+    # jl_base_module = c_void_p.in_dll(lib, 'jl_base_module')
+    # jl_main_module = c_void_p.in_dll(lib, 'jl_main_module')
+
+    gc = fns.gc_enable(0)
+
+    setindex = fns.get_global(fns.base_module(), fns.symbol(b'setindex!'))
+    res = fns.call3(setindex, fns.get_global(fns.main_module(), fns.symbol(b'refs')), fns.call1(get_ref_any_type(fns), val), val)
+
+    fns.gc_enable(gc)
 
     if res is None:
         raise ValueError()
 
 
-def del_ref(lib, fns, val):
-    jl_base_module = c_void_p.in_dll(lib, 'jl_base_module')
-    jl_main_module = c_void_p.in_dll(lib, 'jl_main_module')
+def del_ref(fns, val):
+    # jl_base_module = c_void_p.in_dll(lib, 'jl_base_module')
+    # jl_main_module = c_void_p.in_dll(lib, 'jl_main_module')
 
-    gc = jl.gc_enable(0)
+    gc = fns.gc_enable(0)
 
-    delete = jl.get_global(jl_base_module, jl.symbol(b'delete!'))
-    res = jl.call2(delete, jl.get_global(jl_main_module, jl.symbol(b'refs')), val)
+    delete = fns.get_global(fns.base_module(), fns.symbol(b'delete!'))
+    res = fns.call2(delete, fns.get_global(fns.main_module(), fns.symbol(b'refs')), val)
 
-    jl.gc_enable(gc)
+    fns.gc_enable(gc)
 
     if res is None:
         raise ValueError()
     
 
 
-def ptr_to_arr(lib, fns, eltype, dims, data, own=True):
+def ptr_to_arr(fns, eltype, dims, data, own=True):
     """
     Returns an Array{`eltype`, `len(dims)`} with dimensions `dims` and `data` located at data
 
@@ -479,20 +482,20 @@ def ptr_to_arr(lib, fns, eltype, dims, data, own=True):
         - Given `np.ndarray` object `a` s.t. `len(a.shape) == 1` and `a.dtype == np.dtype('int64')`, let `data = a.ctypes.data_as(c_void_p)`.
     """
 
-    jl_int64_type = c_void_p.in_dll(lib, 'jl_int64_type')
+    # jl_int64_type = c_void_p.in_dll(lib, 'jl_int64_type')
     
-    val_dims = get_ctypes_arr(c_void_p, *map(jl.box_int64, dims))
-    val_dims_types = get_ctypes_arr(c_void_p, *((jl_int64_type,) * len(dims)))
+    val_dims = get_ctypes_arr(c_void_p, *map(fns.box_int64, dims))
+    val_dims_types = get_ctypes_arr(c_void_p, *((fns.int64_type(),) * len(dims)))
 
-    val_dims_tup_type = jl.apply_tuple_type_v(val_dims_types, len(dims))
-    val_dims_tup = jl.new_structv(val_dims_tup_type, val_dims, len(dims))
+    val_dims_tup_type = fns.apply_tuple_type_v(val_dims_types, len(dims))
+    val_dims_tup = fns.new_structv(val_dims_tup_type, val_dims, len(dims))
 
-    val_arr_type = jl.apply_array_type(eltype, len(dims))
-    val_arr = jl.ptr_to_array(val_arr_type, data, val_dims_tup, int(own))
+    val_arr_type = fns.apply_array_type(eltype, len(dims))
+    val_arr = fns.ptr_to_array(val_arr_type, data, val_dims_tup, int(own))
 
     return val_arr
 
-def arr_to_ptr(lib, fns, ctypes_dtype, np_dtype, shape, len, arr):
+def arr_to_ptr(fns, ctypes_dtype, np_dtype, shape, len, arr):
     import numpy as np
 
     ptr = fns.unbox_voidpointer(object.__getattribute__(arr.ref.mem.ptr, 'val'))
@@ -504,7 +507,7 @@ def arr_to_ptr(lib, fns, ctypes_dtype, np_dtype, shape, len, arr):
     return np_arr
 
 
-def get_nt(lib, fns, names, vals, tys):
+def get_nt(fns, names, vals, tys):
     assert len(names) == len(vals) == len(tys)
     l = len(names)
 
@@ -521,12 +524,12 @@ def get_nt(lib, fns, names, vals, tys):
 
     return nt
 
-def call_with_kwargs(lib, fns, fn, args, names, vals, tys):
+def call_with_kwargs(fns, fn, args, names, vals, tys):
     # _getattr = lambda *_: object.__getattribute__(*_)
 
     l = len(args)
 
-    nt = get_nt(lib, fns, names, vals, tys)
+    nt = get_nt(fns, names, vals, tys)
     carr_args = get_ctypes_arr(c_void_p, *(nt, fn, *args))
 
     return fns.call(fns.kwcall_func(), carr_args, l + 2)
@@ -538,28 +541,29 @@ def call_with_kwargs(lib, fns, fn, args, names, vals, tys):
 
 
 class JuliaValGC(JuliaVal):
-    def __init__(self, lib, fns, val):
+    def __init__(self, val):
         _getattr = lambda *_: object.__getattribute__(self, *_)
         _setattr = lambda *_: object.__setattr__(self, *_)
 
-        _setattr('lib', lib)
-        _setattr('fns', fns)
+        # _setattr('lib', lib)
+        # _setattr('fns', fns)
+        fns = _getattr('fns')
         _setattr('val', val)
 
         _setattr('_convert_to', lambda _: object.__getattribute__(_, 'val') if isinstance(_, JuliaVal) else _)
-        _setattr('_convert_from', lambda _: JuliaValGC(lib, fns, _))
+        _setattr('_convert_from', lambda _: JuliaValGC(fns, _))
 
-        add_ref(lib, fns, val)
+        add_ref(fns, val)
     
     def __del__(self):
         _getattr = lambda *_: object.__getattribute__(self, *_)
         _setattr = lambda *_: object.__setattr__(self, *_)
 
-        lib = _getattr('lib')
+        # lib = _getattr('lib')
         fns = _getattr('fns')
         val = _getattr('val')
 
-        del_ref(lib, fns, val)
+        del_ref(fns, val)
 
 
 
@@ -634,6 +638,14 @@ class JuliaValGC(JuliaVal):
 
 def get_ctypes_arr(ty, *args):
     return (ty * len(args))(*args)
+
+
+def init_JuliaVal(fns):
+    JuliaVal.fns = fns
+
+def init_JuliaValGC(fns):
+    init_JuliaVal(fns)
+    init_refs(fns)
 
 
 # def run_experimental(lib):
@@ -780,12 +792,8 @@ if __name__ == '__main__':
 
     lib = JuliaLib(libpath).__enter__()
     libutils = CDLLUtils(lib, funcs=libfuncs, vars=libvars)
-    # libfuncs = libutils.funcs
-
-    # jl_eval, jl_call1, println = run_experimental(lib)
-    # jl = box('jl_', **libfuncs)
 
     jl = as_object('jl_', **(libutils.funcs), **(libutils.vars))
-
-    init_refs(lib, jl)
-    println = JuliaValGC(lib, jl, jl.eval_string(b'println'))
+    init_JuliaValGC(jl)
+    
+    println = JuliaValGC(jl.eval_string(b'println'))
