@@ -21,6 +21,17 @@ class as_object(object):
         return sorted([k[len(prefix):] for k in object.__getattribute__(self, 'it').keys() if k[:len(prefix)] == prefix])
 
 
+class as_object(object):
+    def __init__(self, prefix, **kwargs):
+        object.__setattr__(self, 'prefix', prefix)
+        object.__setattr__(self, 'it', kwargs)
+    def __getattribute__(self, name):
+        return object.__getattribute__(self, 'it').get(f'{object.__getattribute__(self, 'prefix')}{name}', None)
+    def __dir__(self):
+        prefix = object.__getattribute__(self, 'prefix')
+        return sorted([k[len(prefix):] for k in object.__getattribute__(self, 'it').keys() if k[:len(prefix)] == prefix])
+
+
 class JuliaLib:
     def __init__(self, libpath):
         self.libpath = libpath
