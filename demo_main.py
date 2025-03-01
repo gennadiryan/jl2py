@@ -12,6 +12,8 @@ TODO:
     - add support for additional QCPs/problem templates (e.g. unitary sampling problem)
     - add support for customized initial trajectories
     - add more support for/examples of retrieving data from trajectories
+
+    - add QuTIP support
 """
 
 
