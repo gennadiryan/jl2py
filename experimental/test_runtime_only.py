@@ -32,6 +32,11 @@ class JuliaLib:
         assert jl_init is not None
         jl_init.argtypes = None
         jl_init.restype = None
+
+        jl_init_with_image = self.lib.jl_init_with_image
+        assert jl_init_with_image is not None
+        jl_init_with_image.argtypes = [ctypes.c_char_p, ctypes.c_char_p,]
+        jl_init_with_image.restype = None
         
         jl_atexit_hook = self.lib.jl_atexit_hook
         assert jl_atexit_hook is not None
@@ -54,8 +59,12 @@ if __name__ == '__main__':
     # julia_libext = 'dylib' # Linux: 'so'; Mac: 'dylib'; Windows: 'dll'
     # julia_libpath = os.path.join(julia_libdir, f'{julia_libname}.{julia_libext}')
 
-    julia_sysimg = None
+    # julia_sysimg = None
+    julia_sysimg = "/Users/gennadiryan/.julia/dev/jl2py/target/lib/libjl2py.dylib"
 
-    with JuliaLib(julia_sys_bindir, julia_base_libdir) as jl:
-        jl.eval_string('println("Hello, world!")')
+    # with JuliaLib(julia_sys_bindir, julia_base_libdir, sysimg=julia_sysimg) as jl:
+    #     jl.eval_string('println("Hello, world!")')
+    jl = JuliaLib(julia_sys_bindir, julia_base_libdir, sysimg=julia_sysimg)
+    jl.__enter__()
+    jl.eval_string('println("Hello, world")')
 
