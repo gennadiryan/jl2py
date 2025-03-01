@@ -6,6 +6,15 @@ from ctypes import cdll, c_double, c_float, c_int, c_int32, c_int64, c_uint, c_u
 from experimental.main import JuliaLib, CDLLUtils, JuliaVal, JuliaValGC, as_object, ptr_to_arr, arr_to_ptr, get_ctypes_arr, init_JuliaVal, init_JuliaValGC
 
 
+"""
+TODO:
+    - rebase to integrate Jack's updates
+    - add support for additional QCPs/problem templates (e.g. unitary sampling problem)
+    - add support for customized initial trajectories
+    - add more support for/examples of retrieving data from trajectories
+"""
+
+
 # class UnitarySmoothPulseProblem:
 #     def __init__(self, system, operator, t, dt):
 #         self._system = system
