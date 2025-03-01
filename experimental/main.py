@@ -7,7 +7,7 @@ import os
 import platform
 import random
 import ctypes, _ctypes
-from ctypes import cdll, c_int, c_int32, c_int64, c_uint, c_uint32, c_uint64, c_size_t, c_char_p, c_void_p
+from ctypes import cdll, c_double, c_float, c_int, c_int32, c_int64, c_uint, c_uint32, c_uint64, c_size_t, c_char_p, c_void_p
 
 
 class as_object(object):
@@ -62,26 +62,34 @@ class JuliaVal:
     Wrapper class for Julia objects of type T <: Any
 
     Attributes:
-        _lib (ctypes.CDLL): shared library from which Julia C API utility functions are accessed
-        _val (ctypes.c_void_p): jl_value_t * underlying the value
-        _convert_to (Callable): handler for converting 
+        fns (asobject): shared library wrapper from which Julia C API utility functions are accessed
+        val (ctypes.c_void_p): jl_value_t * underlying the value
+        _convert_to (Callable): handler for converting JuliaVal to raw value (if applicable) (should be removed once support for passing raw values to callables is rescinded)
+        _convert_from (Callable): handler for converting raw value to JuliaVal
 
     TODO:
-        - handle global rooting (to prevent GC on Julia side) at __init__ (and/or __new__?), __del__, __setattr__, and __delattr__
-        - wrap julia library fns (eval_string, call, call[1,2,3], etc.) into Dict or similar structure to simplify their access within methods/avoid polluting each method local namespaces
+        - handle global rooting (to prevent GC on Julia side) at __init__ (and/or __new__?), __del__, __setattr__, and __delattr__ (partially implemented with JuliaValGC)
         - clarify semantics for _convert_to (currently accepts either raw C ptrs or accesses the _val field of a JuliaVal; used on args upon function call)
         - determine semantics for _convert_from (used on retvalue after function call)
         - determine semantics for storing Julia datatypes and their connection with _convert_to, _convert_from implementation
         - optional; implement __eq__ (underlied by jl_egal) and possibly __hash__
         - optional; implement __lt__/__gt__ if the underlying Julia type allows for it
         - optional; implement __str__, __format__
-        - catch and forward Julia exceptions
+        - optional; implement __getitem__ (be careful with semantics; some types expect index, others expect symbol, others do not support it at all)
+        - simplify JuliaValGC.__init__ so that it can call JuliaVal.__init__ (reduce boilerplate)
+        - consider adding and/or replacing field access with property access (fields are type-specific, properties are value-specific)
+        - ^^ consider adding and/or replacing `fieldnames` with `propertynames` (or their C equivalent implementation)
+        - typecheck setattr
+        - forward Julia exceptions
+        - catch and forward Julia exceptions in places other than __call__
 
     DONE:
         - implement __setattr__
 
         - streamline getting jl_* fns from _lib and setting ctypes type signature (as in JuliaLibUtils)
         - in __getattribute__, replace _get_field with (_field_idx, _get_nth_field) (akin to (_field_idx, _set_nth_field) in __setattr__)
+        - wrap julia library fns (eval_string, call, call[1,2,3], etc.) into Dict or similar structure to simplify their access within methods/avoid polluting each method local namespaces
+        - catch and forward Julia exceptions
 
         - implement __repr__
         - implement __dir__
@@ -98,7 +106,7 @@ class JuliaVal:
         _setattr('val', val)
 
         _setattr('_convert_to', lambda _: object.__getattribute__(_, 'val') if isinstance(_, JuliaVal) else _)
-        _setattr('_convert_from', lambda _: JuliaVal(fns, _))
+        _setattr('_convert_from', lambda _: JuliaVal(_))
 
         # _setattr('_eval_string', get_fn_eval_string(lib))
         # _setattr('_call', get_fn_call(lib))
@@ -197,24 +205,24 @@ class JuliaVal:
         nargs = len(args)
 
         # TODO(jack-champagne): add kwargs call here
-        res = fns.call(val, args, nargs) # TODO: handle bad return values and possibly exceptions
+        res = fns.call(val, args, nargs) # TODO: handle bad return values (i.e. `res is None` yet no exception thrown)
+
+        # see github.com/JuliaLang/julia/test/embedding/embedding.c
+        eo = fns.exception_occurred()
+        if eo is not None:
+            fns.call2(fns.get_global(fns.base_module(), 'showerror'.encode()), fns.stderr_obj(), eo)
+            fns.printf(fns.stderr_stream(), '\n'.encode())
+            return None
+
         # return res
         # return JuliaVal(fns, res)
         return _getattr('_convert_from')(res)
 
     # def __del__(self,):
-    #     _getattr = lambda *_: object.__getattribute__(self, *_)
-    #     _setattr = lambda *_: object.__setattr__(self, *_)
-
-    #     fns = _getattr('fns')
-    #     val = _getattr('val')
+    #     pass
 
     # def __delattr__(self, name):
-    #     _getattr = lambda *_: object.__getattribute__(self, *_)
-    #     _setattr = lambda *_: object.__setattr__(self, *_)
-
-    #     fns = _getattr('fns')
-    #     val = _getattr('val')
+    #     pass
 
     def __dir__(self,):
         # return list()
@@ -258,12 +266,29 @@ class JuliaVal:
     
 
 
+# TODO: 
+#   - study whether jl.gc_enable really does blow up memory without bound as claimed
+#   - study whether jl.gc_enable is necesary at all (via setting breakpoints in jl_gc_alloc and studying which library fns do not cause allocations)
+#   - study whether jl_pgcstack (jl_get_current_task()->gcstack, or jl_get_pgcstack()) can be manipulated directly to achieve effect of JL_GC_PUSHARGS macro
+"""
+jl_pgcstack = jl_current_task->gcstack
+JL_GC_ENCODE_PUSHARGS(n) = (((size_t)(n))<<2)
+JL_GC_ENCODE_PUSH(n) = ((((size_t)(n))<<2)|1)
+
+jl_value_t **args;
+// either
+void *__gc_stkf[] = {(void *) JL_GC_ENCODE_PUSH(n), jl_pgcstack, args[0], ..., args[n-1]};
+jl_pgcstack = (jl_gcframe_t *) __gc_stkf;
+// or
+// ??
+"""
+
 def get_ref_any_type(fns):
     return fns.apply_type1(fns.get_global(fns.base_module(), fns.symbol(b'RefValue')), fns.any_type())
 
 
 def init_refs(fns):
-    gc = fns.gc_enable(0)
+    # gc = fns.gc_enable(0)
 
     val = fns.call0(fns.apply_type2(fns.get_global(fns.base_module(), fns.symbol(b'IdDict')), fns.any_type(), get_ref_any_type(fns)))
 
@@ -271,28 +296,28 @@ def init_refs(fns):
     bp = fns.get_binding_wr(fns.main_module(), var, 1)
     fns.checked_assignment(bp, fns.main_module(), var, val)
 
-    fns.gc_enable(gc)
+    # fns.gc_enable(gc)
 
 
 def add_ref(fns, val):
-    gc = fns.gc_enable(0)
+    # gc = fns.gc_enable(0)
 
     setindex = fns.get_global(fns.base_module(), fns.symbol(b'setindex!'))
     res = fns.call3(setindex, fns.get_global(fns.main_module(), fns.symbol(b'refs')), fns.call1(get_ref_any_type(fns), val), val)
 
-    fns.gc_enable(gc)
+    # fns.gc_enable(gc)
 
     if res is None:
         raise ValueError()
 
 
 def del_ref(fns, val):
-    gc = fns.gc_enable(0)
+    # gc = fns.gc_enable(0)
 
     delete = fns.get_global(fns.base_module(), fns.symbol(b'delete!'))
     res = fns.call2(delete, fns.get_global(fns.main_module(), fns.symbol(b'refs')), val)
 
-    fns.gc_enable(gc)
+    # fns.gc_enable(gc)
 
     if res is None:
         raise ValueError()
@@ -378,7 +403,7 @@ class JuliaValGC(JuliaVal):
         _setattr('val', val)
 
         _setattr('_convert_to', lambda _: object.__getattribute__(_, 'val') if isinstance(_, JuliaVal) else _)
-        _setattr('_convert_from', lambda _: JuliaValGC(fns, _))
+        _setattr('_convert_from', lambda _: JuliaValGC(_))
 
         add_ref(fns, val)
     
@@ -437,8 +462,10 @@ if __name__ == '__main__':
         jl_get_nth_field=((c_void_p, c_size_t,), c_void_p),
         jl_set_nth_field=((c_void_p, c_size_t, c_void_p,), None),
         
+        jl_box_float64=((c_double,), c_void_p),
         jl_box_int64=((c_int64,), c_void_p),
         jl_box_voidpointer=((c_void_p,), c_void_p),
+        jl_unbox_float64=((c_void_p,), c_double),
         jl_unbox_int64=((c_void_p,), c_int64),
         jl_unbox_voidpointer=((c_void_p,), c_void_p),
         jl_string_ptr=((c_void_p,), c_char_p),
@@ -447,6 +474,8 @@ if __name__ == '__main__':
 
         jl_gc_enable=((c_int,), c_int),
         jl_gc_is_enabled=(None, c_int),
+        jl_gc_collect=((c_int,), None),
+        jl_gc_queue_root=((c_void_p,), None),
 
         jl_get_binding_wr=((c_void_p, c_void_p, c_int,), c_void_p),
         jl_get_global=((c_void_p, c_void_p,), c_void_p),
@@ -461,6 +490,16 @@ if __name__ == '__main__':
         jl_new_structv=((c_void_p, c_void_p, c_uint32,), c_void_p),
         jl_apply_array_type=((c_void_p, c_size_t,), c_void_p),
         jl_ptr_to_array=((c_void_p, c_void_p, c_void_p, c_int,), c_void_p),
+
+        jl_exception_occurred=(None, c_void_p),
+
+        jl_printf=((c_void_p, c_char_p,), c_int),
+        jl_stderr_stream=(None, c_void_p),
+        jl_stderr_obj=(None, c_void_p),
+
+        jl_get_current_task=(None, c_void_p),
+
+        jl_get_pgcstack=(None, c_void_p),
     )
     libvars = dict(
         jl_core_module=c_void_p,
