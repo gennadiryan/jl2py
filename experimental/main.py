@@ -330,9 +330,9 @@ class JuliaVal:
         if fns.get_nth_field(val, idx) != value:
             raise ValueError()
     
-    def __call__(self, *args, **kwds):
-        if kwarg.__len__() != 0:
-            print(kwds)
+    def __call__(self, *args, **kwargs):
+        # if len(kwargs) > 0:
+        #     print(kwargs)
 
         _getattr = lambda *_: object.__getattribute__(self, *_)
         _setattr = lambda *_: object.__setattr__(self, *_)
