@@ -14,6 +14,9 @@ TODO:
     - add more support for/examples of retrieving data from trajectories
     - generalize inputs (as best as possible) to other <: Number types besides ComplexF64 (currently requires special handling due to numpy representation of complex128)
 
+    - write tests comparing ptr_to_arr(..., own=True) vs ptr_to_arr(..., own=False)
+    - write tests based on `@testitem`s from [unitary,quantum_state]_smooth_pulse_problem.jl (to investigate limitations of JuliaVal API as well as to get some ideas for demo tasks, esp. as we plan compare to test QuTIP on the same tasks)
+
 main.py TODO:
     - get rid of implicit uses of globally defined Julia fns (e.g. getindex)
     - get rid of unnecessary args/kwargs expansions (e.g. in get_ctypes_arr), or verify they introduce no performance penalty
@@ -259,7 +262,7 @@ if __name__ == '__main__':
     import numpy as np
     
     dim_cols, dim_rows = tuple(jl.unbox_int64(ptr(_)) for _ in (prob.trajectory.dim, t))
-    data_vec = arr_to_ptr(jl, c_double, np.dtype('float64'), (dim_cols * dim_rows,), dim_cols * dim_rows, prob.trajectory.datavec)
+    data_vec = arr_to_ptr(jl, c_double, np.dtype('float64'), (dim_cols * dim_rows,), dim_cols * dim_rows, prob.trajectory.datavec) # forgot to retain ownership of underlying memory; make a test out of this to ascertain differences in array behavior
     data_mat = data_vec.reshape((dim_rows, dim_cols)).transpose()
     
     rng_a, = [getindex(prob.trajectory.components, JuliaValGC(jl.symbol(_.encode()))) for _ in ('a',)]
