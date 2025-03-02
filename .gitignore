@@ -1,6 +1,14 @@
+# C
+/**/main
+/**/main.o
+
+# Julia
 /Manifest.toml
-__pycache__
-demo/__pycache__
-target
-main.o
-main
+/**/target/
+
+# Python
+/env/
+/**/__pycache__/
+
+# Misc
+/**/.DS_Store
