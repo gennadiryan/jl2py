@@ -8,28 +8,28 @@ from experimental.main import JuliaLib, CDLLUtils, JuliaVal, JuliaValGC, as_obje
 
 """
 TODO:
+    - write functions implementing [Unitary,QuantumState]SmoothPulseProblem
     - add support for additional QCPs/problem templates (e.g. unitary sampling problem)
     - add support for customized initial trajectories
     - add more support for/examples of retrieving data from trajectories
+    - generalize inputs (as best as possible) to other <: Number types besides ComplexF64 (currently requires special handling due to numpy representation of complex128)
 
-    - add QuTIP support
-
+main.py TODO:
     - get rid of implicit uses of globally defined Julia fns (e.g. getindex)
+    - get rid of unnecessary args/kwargs expansions (e.g. in get_ctypes_arr), or verify they introduce no performance penalty
+    - move definitions of libjulia-related values (cdll instance, asobject wrapper instance, etc.) into module body to ensure that they are imported and run exactly once
+    - make ^^ depend on setuptools-related configs
+    - handle library checks, (if necessary) first-time Pkg.add(), etc. in setup script
+    - figure out why arr_to_ptr returns a flat array and falsely passes dtype tests (not a breaking issue but should be addressed nonetheless)
+    - rebuild target with latest Piccolo.jl version
+
+Misc TODO:
+    - add QuTIP support
 
 DONE:
     - rebase to integrate Jack's updates
     - add support for the same unitaries/gates as offered by Piccolo.jl
 """
-
-
-# class UnitarySmoothPulseProblem:
-#     def __init__(self, system, operator, t, dt):
-#         self._system = system
-#         self._operator = operator
-#         self._t = JuliaValGC(jl.box_int64(t))
-#         self._dt = JuliaValGC(jl.box_float64(dt))
-
-#         self.value = fn_uspp(self._system, self._operator, self._t, self._dt)
 
 
 
