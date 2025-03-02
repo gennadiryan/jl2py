@@ -1,0 +1,99 @@
+jv = lambda _: JuliaValGC(lib, jl, _)
+mod_main = jl.main_module()
+mod_main
+mod_qc = jl.get_global(mod_main, jl.symbol(b'QuantumCollocation'))
+mod_qc
+mod_jl2py = jl.get_global(mod_main, jl.symbol(b'jl2py'))
+mod_jl2py
+mod_qc = jl.get_global(mod_jl2py, jl.symbol(b'QuantumCollocation'))
+mod_qc
+var_paulis = jl.get_global(mod_qc, jl.symbol(b'PAULIS'))
+var_paulis
+paulis = jv(var_paulis)
+paulis
+_paulis = var_paulis
+_mod_qc = mod_qc
+mod_qc = jv(_mod_qc)
+mod_qc
+paulis
+jl.eval_string(b'println(refs)')
+_gates = jl.get_global(_mod_qc, jl.symbol(b'GATES'))
+gates = jv(_gates)
+gates
+paulis
+_qs = jl.get_global(_mod_qc, jl.symbol(b'QuantumSystem'))
+qs = jv(_qs)
+qs
+_uspp = jl.get_global(_mod_qc, jl.symbol(b'UnitarySmoothPulseProblem'))
+uspp = jv(_uspp)
+uspp
+_getindex = jl.get_global(jl.base_module(), jl.symbol(b'getindex'))
+getindex = jv(_getindex)
+getindex
+_res = getindex(paulis, jv(jl.symbol(b'X')))
+_res
+paulis_x = _res
+paulis_y = getindex(paulis, jv(jl.symbol(b'Y')))
+paulis_y
+gates_h = getindex(gates, jv(jl.symbol(b'H')))
+gates_h
+lib.jl_alloc_vec_any.restype
+lib.jl_alloc_vec_any.restype = c_void_p
+lib.jl_alloc_vec_any.argtypes
+lib.jl_alloc_vec_any.argtypes = [c_size_t,]
+lib.jl_array_ptr_1d_push.restype
+lib.jl_array_ptr_1d_push.restype = None
+lib.jl_array_ptr_1d_push.argtypes
+lib.jl_array_ptr_1d_push.argtypes = [c_void_p, c_void_p]
+_arr = lib.jl_alloc_vec_any(0)
+_arr
+arr = jv(_arr)
+_paulis_x = object.__getattribute__(paulis_x, 'val')
+_paulis_x
+_paulis_y = object.__getattribute__(paulis_y, 'val')
+_paulis_y
+lib.jl_array_ptr_1d_push(_arr, _paulis_x)
+arr
+lib.jl_array_ptr_1d_push(_arr, _paulis_y)
+arr
+qs
+jv
+jl.typeof
+jv(jl.typeof(paulis_x))
+jv(jl.typeof(_paulis_x))
+ty = \
+jv(jl.typeof(_paulis_x))
+carr_paulis = get_ctypes_arr(c_void_p, _paulis_x, _paulis_y)
+carr_paulis
+carr_paulis[0]
+carr_paulis[1]
+arr2 = ptr_to_arr(lib, jl, ty, (2,), carr_paulis, False)
+_ty = object.__getattribute__(ty, 'val')
+_ty
+arr2 = ptr_to_arr(lib, jl, _ty, (2,), carr_paulis, False)
+arr2
+_arr2 = arr2
+arr2 = jv(_arr2)
+arr2
+res = qs(arr2)
+res
+syst = res
+syst
+gates_h
+t = jv(jl.box_int64(50))
+t
+_dt = jl.eval_string(b'0.2')
+dt = jv(_dt)
+dt
+(syst, gates_h, t, dt)
+prob = uspp(syst, gates_h, t, dt)
+_solve = jl.get_global(_mod_qc, jl.symbol(b'solve!'))
+_solve
+solve = jv(_solve)
+solve
+_plot_upops = jl.get_global(_mod_qc, jl.symbol(b'plot_unitary_populations'))
+plot_upops = jv(_plot_upops)
+plot_upops
+_display = jl.get_global(_mod_qc, jl.symbol(b'display'))
+display = jv(_display)
+display

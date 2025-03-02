@@ -1,0 +1,110 @@
+(env) gennadiryan@gennadiryan jl2py % DYLD_FALLBACK_LIBRARY_PATH=./target/lib:./target/lib/julia python -i ./experimental/main.py
+>>> arr = get_ctypes_arr(c_void_p, *[jl.int64_type() for _ in range(2)])
+>>> jv = lambda _: JuliaValGC(lib, jl, _)
+>>> _tup_ty = jl.apply_tuple_type_v(arr, arr._length_)
+>>> tup_ty = jv(_tup_ty)
+>>> tup_ty
+Tuple{Int64, Int64}
+>>> _sym_a, _sym_b = [jl.symbol(_.encode()) for _ in 'ab']
+>>> sym_a, sym_b = [jv(_) for _ in (_sym_a, _sym_b)]
+>>> sym_arr = get_ctypes_arr(c_void_p, *[jl.symbol_type() for _ in range(2)])
+>>> _tup_sym_ty = jl.apply_tuple_type_v(sym_arr, 2)
+>>> tup_sym_ty = jv(_tup_sym_ty)
+>>> tup_sym_ty
+Tuple{Symbol, Symbol}
+>>> carr_syms = get_ctypes_arr(c_void_p, _sym_a, _sym_b)
+>>> _tup_sym = jl.new_structv(_tup_sym_ty, carr_syms, 2)
+>>> tup_sym_ty = jv(_tup_sym_ty)
+>>> tup_sym = jv(_tup_sym)
+>>> tup_sym
+(:a, :b)
+>>> _val_a, _val_b = [jl.box_int64(_) for _ in (4, 20)]
+>>> val_a, val_b = [jv(_) for _ in (_val_a, _val_b)]
+>>> val_a
+4
+>>> val_b
+20
+>>> carr_val = get_ctypes_arr(c_void_p, *(_val_a, _val_b))
+>>> _tup_val = jl.new_structv(_tup_ty, carr_val, 2)
+>>> tup_val = jv(_tup_val)
+>>> tup_val
+(4, 20)
+>>> _ntt = jl.namedtuple_type()
+>>> ntt = jv(_ntt)
+>>> ntt
+NamedTuple
+>>> _nt = jl.apply_type2(_ntt, _tup_sym, _tup_ty)
+>>> nt = jv(_nt)
+>>> nt
+@NamedTuple{a::Int64, b::Int64}
+>>> _nt_val = jl.new_structv(_nt, carr_val, 2)
+>>> nt_val = jv(_nt_val)
+>>> nt_val
+(a = 4, b = 20)
+>>> jl.eval_string(b'function testfunc(a::Int64, b::Int64; x=0, y=0); println((a, b)); x + y; end;')
+4414624968
+>>> _testfunc = jl.eval_string(b'testfunc')
+>>> testfunc = jv(_testfunc)
+>>> testfunc
+Main.testfunc
+>>> println(testfunc)
+testfunc
+nothing
+>>> println(jl.typeof(_testfunc))
+typeof(testfunc)
+nothing
+>>> _sym_x, _sym_y = [jl.symbol(_.encode()) for _ in 'xy']
+>>> sym_x, sym_y = [jv(_) for _ in (_sym_x, _sym_y)]
+>>> carr_syms = get_ctypes_arr(c_void_p, _sym_x, _sym_y)
+>>> _tup_sym = jl.new_structv(_tup_sym_ty, carr_syms, 2)
+>>> tup_sym = jv(_tup_sym)
+>>> tup_sym
+(:x, :y)
+>>> _tup_val = jl.new_structv(_tup_ty, carr_val, 2)
+>>> tup_val = jv(_tup_val)
+>>> tup_val
+(4, 20)
+>>> _nt = jl.apply_type2(_ntt, _tup_sym, _tup_ty)
+>>> nt = jv(_nt)
+>>> nt
+@NamedTuple{x::Int64, y::Int64}
+>>> _nt_val = jl.new_structv(_nt, carr_val, 2)
+>>> nt_val = jv(_nt_val)
+>>> nt_val
+(x = 4, y = 20)
+>>> testfunc
+Main.testfunc
+>>> nt_val
+(x = 4, y = 20)
+>>> _val_a_, _val_b_ = [jl.box_int64(_) for _ in (42, 99)]
+>>> val_a_, val_b_ = [jv(_) for _ in (_val_a_, _val_b_)]
+>>> val_a_
+42
+>>> val_b_
+99
+>>> res1 = testfunc(val_a_, val_b_)
+(42, 99)
+>>> res1 = testfunc(val_a, val_b)
+(4, 20)
+>>> res1 = testfunc(val_a_, val_b_)
+(42, 99)
+>>> _kwc = jl.kwcall_func()
+>>> kwc = jv(_kwc)
+>>> kwc
+Core.kwcall
+>>> kwc
+Core.kwcall
+>>> println(jl.typeof(_kwc))
+typeof(Core.kwcall)
+nothing
+>>> res2 = kwc(nt, testfunc, val_a_, val_b_)
+
+[50665] signal 11 (2): Segmentation fault: 11
+in expression starting at none:0
+lookup_typevalue at /Users/gennadiryan/.julia/dev/jl2py/target/lib/julia/libjulia-internal.1.11.2.dylib (unknown line)
+ijl_apply_generic at /Users/gennadiryan/.julia/dev/jl2py/target/lib/julia/libjulia-internal.1.11.2.dylib (unknown line)
+ijl_call1 at /Users/gennadiryan/.julia/dev/jl2py/target/lib/julia/libjulia-internal.1.11.2.dylib (unknown line)
+ffi_call_SYSV at /usr/lib/libffi.dylib (unknown line)
+Allocations: 832386 (Pool: 832355; Big: 31); GC: 1
+zsh: segmentation fault  DYLD_FALLBACK_LIBRARY_PATH=./target/lib:./target/lib/julia python -i 
+(env) gennadiryan@gennadiryan jl2py % 

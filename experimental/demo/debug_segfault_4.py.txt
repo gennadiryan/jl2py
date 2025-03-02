@@ -1,0 +1,44 @@
+>>> eo = jl.exception_occurred()
+>>> eo
+>>> eo is None
+True
+>>> jl.eval_string(b'abc')
+>>> eo = jl.exception_occurred()
+>>> eo
+4866217040
+>>> println
+println
+>>> println(eo)
+UndefVarError(:abc, Main)
+nothing
+>>> err_obj = jl.stderr_obj()
+>>> err_obj
+4898750800
+>>> println(err_obj)
+
+nothing
+>>> println(jl.typeof(err_obj))
+Base.TTY
+nothing
+>>> eo
+4866217040
+>>> err_obj
+4898750800
+>>> fn_showerror = jl.get_global(jl.base_module(), jl.symbol('showerror'.encode()))
+>>> fn_showerror
+12240712320
+>>> jl.call2(fn_showerror, err_obj, eo)
+UndefVarError: `abc` not defined in `Main`
+Suggestion: check for spelling errors or missing imports.4372561928
+>>> jl.stderr_stream()
+4965368288
+>>> println(jl.stderr_stream())
+
+[99417] signal 11 (2): Segmentation fault: 11
+in expression starting at none:0
+lookup_typevalue at /Users/gennadiryan/.julia/dev/jl2py/target/lib/julia/libjulia-internal.1.11.2.dylib (unknown line)
+ijl_apply_generic at /Users/gennadiryan/.julia/dev/jl2py/target/lib/julia/libjulia-internal.1.11.2.dylib (unknown line)
+ijl_call at /Users/gennadiryan/.julia/dev/jl2py/target/lib/julia/libjulia-internal.1.11.2.dylib (unknown line)
+ffi_call_SYSV at /usr/lib/libffi.dylib (unknown line)
+Allocations: 291917452 (Pool: 291913778; Big: 3674); GC: 90
+zsh: segmentation fault  DYLD_FALLBACK_LIBRARY_PATH=./target/lib:./target/lib/julia python -i 
