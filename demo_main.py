@@ -3,6 +3,8 @@ import os
 import ctypes
 from ctypes import cdll, c_double, c_float, c_int, c_int32, c_int64, c_uint, c_uint32, c_uint64, c_size_t, c_char_p, c_void_p
 
+import numpy as np
+
 from experimental.main import JuliaLib, CDLLUtils, JuliaVal, JuliaValGC, as_object, ptr_to_arr, arr_to_ptr, get_ctypes_arr, init_JuliaVal, init_JuliaValGC
 
 
@@ -53,17 +55,27 @@ def dump_paulis():
     ks = 'I X Y Z'.split()
     ret = dict()
     for k in ks:
-        pauli = getindex(paulis, JuliaValGC(jl.symbol(k.encode())))
+        pauli = getindex(paulis, JuliaValGC(jl.symbol(k.encode()))) # implicitly uses `paulis` defined in __main__
         ret.setdefault(k, complexf64_to_ndarr(pauli))
     return ret
 
-def dump_gates(gates):
+def dump_gates():
     ks = 'sqrtiSWAP CX CZ H X XI Y Z I'.split()
     ret = dict()
     for k in ks:
-        gate = getindex(gates, JuliaValGC(jl.symbol(k.encode())))
+        gate = getindex(gates, JuliaValGC(jl.symbol(k.encode()))) # implicitly uses `gates` defined in __main__
         ret.setdefault(k, complexf64_to_ndarr(gate))
     return ret
+
+
+def quantum_system(h_drift: np.ndarray, h_drives: list[np.ndarray]) -> JuliaVal:
+    pass
+
+def unitary_smooth_pulse_problem(system: JuliaVal, operator: np.ndarray, T: int, dt: float) -> JuliaVal:
+    pass
+
+def quantum_state_smooth_pulse_problem(system: JuliaVal, inits: list[np.ndarray], goals: list[np.ndarray], T: int, dt: float) -> JuliaVal:
+    pass
 
 
 def get_complexf64():
@@ -83,7 +95,12 @@ def complexf64_to_ndarr(arr):
 
 def ndarr_to_complexf64(ndarr):
     return JuliaValGC(ptr_to_arr(jl, ptr(get_complexf64()), ndarr.shape[::-1], ndarr.ctypes.data, own=False))
-    
+
+def ndarrs_to_mat_complexf64(ndarrs):
+    # assuming that each ndarr is such that len(ndarr.shape) == 2
+    mat_complexf64_arrty = JuliaValGC(jl.apply_array_type(ptr(get_complexf64()), 2))
+    return JuliaValGC(ptr_to_arr(jl, ptr(mat_complexf64_arrty), (len(ndarrs),), get_ctypes_arr(c_void_p, *[ptr(ndarr_to_complexf64(ndarr)) for ndarr in ndarrs]), own=False))
+
 
 
 # def demo_dump_complexf64_ndarr():
@@ -216,6 +233,8 @@ if __name__ == '__main__':
     init_JuliaValGC(jl)
     
 
+    # predefined values
+    
     println = JuliaValGC(jl.eval_string(b'println'))
     getindex = get_global(JuliaValGC(jl.base_module()), 'getindex')
     
@@ -224,14 +243,20 @@ if __name__ == '__main__':
     mod_qc = get_global(mod_jl2py, 'QuantumCollocation')
 
     fn_qs = get_global(mod_qc, 'QuantumSystem')
+    fn_qsspp = get_global(mod_qc, 'QuantumStateSmoothPulseProblem')
     fn_uspp = get_global(mod_qc, 'UnitarySmoothPulseProblem')
+    fn_umtp = get_global(mod_qc, 'UnitaryMinimumTimeProblem')
 
     fn_solve = get_global(mod_qc, 'solve!')
 
+    # fn_unitary_fidelity = get_global(mod_qc, 'unitary_rollout_fidelity')
+    # fn_fidelity = get_global(mod_qc, 'unitary_rollout_fidelity')
     fn_plot = get_global(mod_qc, 'plot_unitary_populations')
     fn_display = get_global(mod_qc, 'display')
 
 
+    # inputs
+    
     # begin customization
 
     paulis = get_global(mod_qc, 'PAULIS')
@@ -253,16 +278,20 @@ if __name__ == '__main__':
     t = JuliaValGC(jl.box_int64(50))
     dt = JuliaValGC(jl.box_float64(0.2))
 
+    
+    # computation
+    
     syst = fn_qs(val_h_drives)
     prob = fn_uspp(syst, op, t, dt)
     fn_solve(prob)
     plot = fn_plot(prob)
     disp = fn_display(plot)
-
-    import numpy as np
+    
+    
+    # outputs
     
     dim_cols, dim_rows = tuple(jl.unbox_int64(ptr(_)) for _ in (prob.trajectory.dim, t))
-    data_vec = arr_to_ptr(jl, c_double, np.dtype('float64'), (dim_cols * dim_rows,), dim_cols * dim_rows, prob.trajectory.datavec) # forgot to retain ownership of underlying memory; make a test out of this to ascertain differences in array behavior
+    data_vec = arr_to_ptr(jl, c_double, np.dtype('float64'), (dim_cols * dim_rows,), dim_cols * dim_rows, prob.trajectory.datavec)
     data_mat = data_vec.reshape((dim_rows, dim_cols)).transpose()
     
     rng_a, = [getindex(prob.trajectory.components, JuliaValGC(jl.symbol(_.encode()))) for _ in ('a',)]
