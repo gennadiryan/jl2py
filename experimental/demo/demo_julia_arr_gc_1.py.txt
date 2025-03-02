@@ -1,0 +1,84 @@
+(env) gennadiryan@gennadiryan jl2py % DYLD_FALLBACK_LIBRARY_PATH=./target/lib:./target/lib/julia python3 -i experimental/main.py
+>>> _println = JuliaVal(jl, jl.eval_string(b'println'))
+>>> arr = JuliaVal(jl, jl.eval_string(b'Int64[1, 2, 3]'))
+>>> quit()
+(env) gennadiryan@gennadiryan jl2py % DYLD_FALLBACK_LIBRARY_PATH=./target/lib:./target/lib/julia python3 -i experimental/main.py
+>>> println = JuliaVal(jl, jl.eval_string(b'println'))
+>>> arr = JuliaVal(jl, jl.eval_string(b'Int64[1, 2, 3]'))
+>>> println(arr)
+[1, 2, 3]
+4375986184
+>>> println(arr.size)
+(3,)
+4375986184
+>>> println(arr.ref)
+MemoryRef{Int64}(Ptr{Nothing} @0x0000000108c50050, [1, 2, 3])
+4375986184
+>>> ref = JuliaVal(jl, arr.ref)
+>>> println(ref.ptr_or_offset)
+Ptr{Nothing} @0x00000001086d69c0
+4375986184
+>>> println(ref.mem)
+[7, 27, 0, 0, 0, 0, 0, 0]
+4375986184
+>>> mem = JuliaVal(jl, ref.mem)
+>>> println(jl.typeof(mem))
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ctypes.ArgumentError: argument 1: TypeError: wrong type
+>>> println(jl.typeof(ref.mem))
+Memory{Int64}
+4375986184
+>>> memt = jl.typeof(ref.mem)
+>>> memt
+11994578032
+>>> jl.eval_string('fieldnames')
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ctypes.ArgumentError: argument 1: TypeError: wrong type
+>>> fldnms = JuliaVal(jl, jl.eval_string(b'fieldnames'))
+>>> fldnms(mem)
+>>> fldnms(memt)
+4445022864
+>>> fldnms(memt.names
+... )
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+AttributeError: 'int' object has no attribute 'names'
+>>> fldnms(memt.name)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+AttributeError: 'int' object has no attribute 'name'
+>>> fldnames(JuliaVal(jl, JuliaVal(jl, memt.name).names))
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+NameError: name 'fldnames' is not defined. Did you mean: 'fldnms'?
+>>> fldnms(JuliaVal(jl, JuliaVal(jl, memt.name).names))
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+AttributeError: 'int' object has no attribute 'name'
+>>> fldnms(JuliaVal(jl, JuliaVal(jl, JuliaVal(jl, memt).name).names))
+>>> memt
+11994578032
+>>> println(memt)
+Memory{Int64}
+4375986184
+>>> mem
+<__main__.JuliaVal object at 0x104402d80>
+>>> mem.ptr
+4445066240
+>>> mem.length
+4376223504
+>>> println(mem.ptr)
+Ptr{Nothing} @0x00000001086d69c0
+4375986184
+>>> println(mem.length)
+8
+4375986184
+>>> println(mem)
+[7, 27, 0, 0, 0, 0, 0, 0]
+4375986184
+>>> println(arr)
+[7]
+4375986184
+>>> quit()

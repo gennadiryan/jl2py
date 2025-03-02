@@ -1,0 +1,54 @@
+(env) gennadiryan@gennadiryan jl2py % DYLD_FALLBACK_LIBRARY_PATH=./target/lib:./target/lib/julia python -i ./experimental/main.py
+>>> _nt = jl.eval_string(b'(x = 4, y = 20)')
+>>> jv = lambda _: JuliaValGC(lib, jl, _)
+>>> nt = jv(_nt)
+>>> nt
+(x = 4, y = 20)
+>>> println(jl.typeof(_nt))
+@NamedTuple{x::Int64, y::Int64}
+nothing
+>>> _kwc = jl.kwcall_func()
+>>> kwc = jv(_kwc)
+>>> kwc
+Core.kwcall
+>>> jl.eval_string(b'function testfunc(a::Int64, b::Int64; x=0, y=0); println((a, b)); x + y; end;')
+4380108320
+>>> _testfunc = jl.eval_string(b'testfunc')
+>>> testfunc = jv(_testfunc)
+>>> testfunc
+Main.testfunc
+>>> _tf_ty = jl.typeof(_testfunc)
+>>> tf_ty = jv(_tf_ty)
+>>> tf_ty
+typeof(testfunc)
+>>> println(tf_ty)
+typeof(testfunc)
+nothing
+>>> _val_a = jl.box_int64(42)
+>>> val_a = jv(_val_a)
+>>> _val_b = jl.box_int64(99)
+>>> val_b = jv(_val_b)
+>>> val_a, val_b
+(42, 99)
+>>> jl.call
+jl.call(  jl.call0( jl.call1( jl.call2( jl.call3(
+>>> jl.eval_string(b'println(Core.kwcall((x = 4, y = 20), testfunc, 42, 99))')
+(42, 99)
+24
+4351934472
+>>> kwc
+Core.kwcall
+>>> nt
+(x = 4, y = 20)
+>>> val_a
+42
+>>> val_b
+99
+>>> testfunc(val_a, val_b)
+(42, 99)
+0
+>>> res = kwc(nt, testfunc, val_a, val_b)
+(42, 99)
+>>> res
+24
+>>> 

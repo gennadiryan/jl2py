@@ -1,0 +1,295 @@
+(env) gennadiryan@gennadiryan jl2py % DYLD_FALLBACK_LIBRARY_PATH=./target/lib:./target/lib/julia python -i ./experimental/main.py
+>>> init_refs(lib, jl)
+>>> println = jl.eval_string(b'println')
+>>> add_ref(lib, jl, println)
+>>> arr = jl.eval_string(b'Int64[1, 2, 3]')
+>>> add_ref(lib, jl, arr)
+>>> _arr = JuliaVal(jl, arr)
+>>> _arr
+[1, 2, 3]
+>>> ptr = jl.box_voidpointer(1)
+>>> _println = JuliaVal(jl, println)
+>>> _println
+println
+>>> _println(_arr)
+[1, 2, 3]
+nothing
+>>> _println(ptr)
+Ptr{Nothing} @0x0000000000000001
+nothing
+>>> _ptr = _arr.ref.mem.ptr
+>>> _ptr
+Ptr{Nothing} @0x0000000117291c10
+>>> res = jl.unbox_voidpointer(]
+  File "<stdin>", line 1
+    res = jl.unbox_voidpointer(]
+                               ^
+SyntaxError: closing parenthesis ']' does not match opening parenthesis '('
+>>> as_ptr = lambda _: object.__getattribute__(_, 'val')
+>>> as_ptr(_ptr)
+4697469392
+>>> res = jl.unbox_voidpointer(as_ptr(_ptr))
+>>> res
+4683537424
+>>> _ptr
+Ptr{Nothing} @0x0000000117291c10
+>>> int('0x0000000117291c10', 16)
+4683537424
+>>> import numpy as np
+>>> help(np.array)
+
+>>> help(np.ndarray)
+
+>>> np.ctypeslib
+<module 'numpy.ctypeslib' from '/Users/gennadiryan/.julia/dev/jl2py/env/lib/python3.12/site-packages/numpy/ctypeslib.py'>
+>>> help(np.ctypeslib)
+
+>>> help(np.ctypeslib)
+
+>>> help(np.ctypeslib.as_
+np.ctypeslib.as_array(       np.ctypeslib.as_ctypes(      np.ctypeslib.as_ctypes_type(
+>>> help(np.ctypeslib.as_array)
+
+>>> _arr
+[1, 2, 3]
+>>> pyarr = np.ctypeslib.as_array(res, (3,))
+>>> res
+4683537424
+>>> pyarr
+array(4683537424)
+>>> pyres = ctypes.c_void_p(res)
+>>> pyres
+c_void_p(4683537424)
+>>> pyarr = np.ctypeslib.as_array(res, (3,))
+>>> pyarr
+array(4683537424)
+>>> help(np.ctypeslib.as_array)
+
+>>> ctypes.c_int
+ctypes.c_int(   ctypes.c_int16( ctypes.c_int32( ctypes.c_int64( ctypes.c_int8( 
+>>> ctypes.P
+ctypes.POINTER(    ctypes.PyDLL(      ctypes.PYFUNCTYPE(
+>>> help(ctypes.POINTER)
+
+>>> carr = get_ctypes_arr(c_int64, 0, 0, 0)
+>>> carr
+<__main__.c_long_Array_3 object at 0x14cab8f50>
+>>> carr._
+carr._b_base_      carr._b_needsfree_ carr._length_      carr._objects      carr._type_(      
+>>> carr._b_base_
+>>> carr
+<__main__.c_long_Array_3 object at 0x14cab8f50>
+>>> help(carr)
+
+>>> help(ctypes.cast)
+
+>>> np.co
+np.column_stack(     np.compress(         np.convolve(         np.corrcoef(         np.cov(             
+np.common_type(      np.concat(           np.copy(             np.correlate(       
+np.complex128(       np.concatenate(      np.copysign(         np.cos(             
+np.complex64(        np.conj(             np.copyto(           np.cosh(            
+np.complexfloating() np.conjugate(        np.core              np.count_nonzero(   
+>>> np.cor
+np.core       np.corrcoef(  np.correlate(
+>>> np.core
+np.core
+>>> np.core
+<module 'numpy.core' from '/Users/gennadiryan/.julia/dev/jl2py/env/lib/python3.12/site-packages/numpy/core/__init__.py'>
+>>> import np.core
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ModuleNotFoundError: No module named 'np'
+>>> import numpy.core
+>>> np.core
+<module 'numpy.core' from '/Users/gennadiryan/.julia/dev/jl2py/env/lib/python3.12/site-packages/numpy/core/__init__.py'>
+>>> np.core._
+np.core._core               np.core._raise_warning(     np.core._ufunc_reconstruct( np.core._utils             
+>>> import np.core.multiarray
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ModuleNotFoundError: No module named 'np'
+>>> import numpy.core.multiarray
+>>> numpy.cor
+numpy.core       numpy.corrcoef(  numpy.correlate(
+>>> numpy.cor
+numpy.core       numpy.corrcoef(  numpy.correlate(
+>>> numpy.core.multiarray.as_buffer
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "/Users/gennadiryan/.julia/dev/jl2py/env/lib/python3.12/site-packages/numpy/core/multiarray.py", line 18, in __getattr__
+    raise AttributeError(
+AttributeError: module 'numpy.core.multiarray' has no attribute as_buffer
+>>> numpy.core.multiarray.int_asbuffer
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "/Users/gennadiryan/.julia/dev/jl2py/env/lib/python3.12/site-packages/numpy/core/multiarray.py", line 18, in __getattr__
+    raise AttributeError(
+AttributeError: module 'numpy.core.multiarray' has no attribute int_asbuffer
+>>> ptr
+4682782704
+>>> ctypes.pointer(ptr)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+TypeError: _type_ must have storage info
+>>> help(ctypes.pointer)
+
+>>> ctypes.
+ctypes.addressof(             ctypes.c_size_t(              ctypes.LibraryLoader(        
+ctypes.alignment(             ctypes.c_ssize_t(             ctypes.LittleEndianStructure(
+ctypes.ArgumentError(         ctypes.c_time_t(              ctypes.LittleEndianUnion(    
+ctypes.Array(                 ctypes.c_ubyte(               ctypes.memmove(              
+ctypes.ARRAY(                 ctypes.c_uint(                ctypes.memset(               
+ctypes.BigEndianStructure(    ctypes.c_uint16(              ctypes.POINTER(              
+ctypes.BigEndianUnion(        ctypes.c_uint32(              ctypes.pointer(              
+ctypes.byref(                 ctypes.c_uint64(              ctypes.py_object(            
+ctypes.c_bool(                ctypes.c_uint8(               ctypes.pydll                 
+ctypes.c_buffer(              ctypes.c_ulong(               ctypes.PyDLL(                
+ctypes.c_byte(                ctypes.c_ulonglong(           ctypes.PYFUNCTYPE(           
+ctypes.c_char(                ctypes.c_ushort(              ctypes.pythonapi             
+ctypes.c_char_p(              ctypes.c_void_p(              ctypes.resize(               
+ctypes.c_double(              ctypes.c_voidp(               ctypes.RTLD_GLOBAL           
+ctypes.c_float(               ctypes.c_wchar(               ctypes.RTLD_LOCAL            
+ctypes.c_int(                 ctypes.c_wchar_p(             ctypes.set_errno(            
+ctypes.c_int16(               ctypes.cast(                  ctypes.SetPointerType(       
+ctypes.c_int32(               ctypes.cdll                   ctypes.sizeof(               
+ctypes.c_int64(               ctypes.CDLL(                  ctypes.SIZEOF_TIME_T         
+ctypes.c_int8(                ctypes.CFUNCTYPE(             ctypes.string_at(            
+ctypes.c_long(                ctypes.create_string_buffer(  ctypes.Structure(            
+ctypes.c_longdouble(          ctypes.create_unicode_buffer( ctypes.Union(                
+ctypes.c_longlong(            ctypes.DEFAULT_MODE           ctypes.wstring_at(           
+ctypes.c_short(               ctypes.get_errno(            
+>>> ctypes.array
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+AttributeError: module 'ctypes' has no attribute 'array'. Did you mean: 'Array'?
+>>> arr
+4683449520
+>>> _arr
+[1, 2, 3]
+>>> _ptr
+Ptr{Nothing} @0x0000000117291c10
+>>> ptr
+4682782704
+>>> int('0x0000000117291c10', 16)
+4683537424
+>>> res
+4683537424
+>>> carr = (ctypes.c_int64 * 3).from_address(res)
+>>> carr
+<__main__.c_long_Array_3 object at 0x14ca3b550>
+>>> narr = np.ctypeslib.as_array(carr, (3,))
+>>> narr
+array([1, 2, 3])
+>>> narr.dtype
+dtype('<i8')
+>>> narr[0]
+np.int64(1)
+>>> narr[1]
+np.int64(2)
+>>> narr[2]
+np.int64(3)
+>>> narr[2].dtype
+dtype('int64')
+>>> _arr
+[1, 2, 3]
+>>> _arr.ref.mem.ptr
+Ptr{Nothing} @0x0000000117291c10
+>>> it = jl.unbox_voidpointer(arr.ref.mem.ptr)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+AttributeError: 'int' object has no attribute 'ref'
+>>> it = jl.unbox_voidpointer(_arr.ref.mem.ptr)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ctypes.ArgumentError: argument 1: TypeError: wrong type
+>>> as_
+as_object( as_ptr(   
+>>> it = jl.unbox_voidpointer(as_ptr(_arr.ref.mem.ptr))
+>>> it
+4683537424
+>>> narr
+array([1, 2, 3])
+>>> narr.dtype
+dtype('<i8')
+>>> narr.dtype == np.in
+np.in1d(        np.inexact()    np.inner(       np.int32(       np.int_(        np.interp(      np.invert(     
+np.index_exp    np.inf          np.insert(      np.int64(       np.intc(        np.intersect1d(
+np.indices(     np.info(        np.int16(       np.int8(        np.integer()    np.intp(       
+>>> narr.dtype == np.int64
+True
+>>> narr.dtype == np.fl
+np.flatiter()    np.flip(         np.float16(      np.float_power(  np.floor_divide(
+np.flatnonzero(  np.fliplr(       np.float32(      np.floating()   
+np.flexible()    np.flipud(       np.float64(      np.floor(       
+>>> narr.dtype == np.float64
+False
+>>> narr.dtype == np.int32
+False
+>>> narr.dtype == np.int64
+True
+>>> narr.dtype == np.int16
+False
+>>> narr.dtype
+dtype('<i8')
+>>> ctypes.c_int64.
+ctypes.c_int64.from_address(     ctypes.c_int64.from_param(       ctypes.c_int64.value            
+ctypes.c_int64.from_buffer(      ctypes.c_int64.in_dll(          
+ctypes.c_int64.from_buffer_copy( ctypes.c_int64.mro()            
+>>> ctypes.c_int64.value
+<attribute 'value' of '_ctypes._SimpleCData' objects>
+>>> _arr
+[1, 2, 3]
+>>> arr
+4683449520
+>>> narr
+array([1, 2, 3])
+>>> narr[0]
+np.int64(1)
+>>> narr[0] += 1
+>>> narr
+array([2, 2, 3])
+>>> _arr
+[2, 2, 3]
+>>> narr += 1
+>>> _arr
+[3, 3, 4]
+>>> _arr.ref
+MemoryRef{Int64}(Ptr{Nothing} @0x0000000117291c10, [3, 3, 4])
+>>> _arr.ref.mem
+[3, 3, 4]
+>>> res
+4683537424
+>>> jl.eval_string(b'function inc_arr(a, i); a[i] += 1; end;')
+4422412848
+>>> _p
+_println( _ptr(    
+>>> _println(jl.eval_string(b'inc_arr'))
+inc_arr
+nothing
+>>> _inc_arr = jl.eval_string(b'inc_arr')
+>>> add_ref(lib, jl, _inc_arr)
+>>> inc_arr = _inc_arr
+>>> _inc_arr = JuliaVal(jl, inc_arr)
+>>> narr
+array([3, 3, 4])
+>>> _arr
+[3, 3, 4]
+>>> jl.call2(inc_arr, _arr, jl.box_int64(2))
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+ctypes.ArgumentError: argument 2: TypeError: wrong type
+>>> jl.call2(inc_arr, as_, jl.box_int64(2))
+as_object( as_ptr(   
+>>> jl.call2(inc_arr, as_ptr(_arr), jl.box_int64(2))
+4392032272
+>>> _arr
+[3, 4, 4]
+>>> narr
+array([3, 4, 4])
+>>> jl.call2(inc_arr, as_ptr(_arr), jl.box_int64(3))
+4392032720
+>>> _arr
+[3, 4, 5]
+>>> narr
+array([3, 4, 5])
+>>> 

@@ -1,0 +1,39 @@
+(env) gennadiryan@gennadiryan jl2py % DYLD_FALLBACK_LIBRARY_PATH=./target/lib:./target/lib/julia python3 -i ./experimental/main.py
+>>> mod_main = jl.main_module()
+>>> mod_main
+c_void_p(12395850688)
+>>> mod_qc = jl.get_global(mod_main, jl.symbol(b'QuantumCollocation'))
+>>> mod_qc
+>>> jl.base_module()
+c_void_p(12395863952)
+>>> mod_jl2py = jl.get_global(mod_main, jl.symbol(b'jl2py'))
+>>> mod_jl2py
+12115255104
+>>> mod_qc = jl.get_global(mod_jl2py, jl.symbol(b'QuantumCollocation'))
+>>> mod_qc
+12242664464
+>>> var_paulis = jl.get_global(mod_qc, jl.symbol(b'PAULIS'))
+>>> var_paulis
+12049671056
+>>> paulis = JuliaValGC(lib, jl, var_paulis)
+>>> paulis
+Dict{Symbol, Matrix{ComplexF64}}(:Z => [1.0 + 0.0im 0.0 + 0.0im; 0.0 + 0.0im -1.0 + 0.0im], :I => [1.0 + 0.0im 0.0 + 0.0im; 0.0 + 0.0im 1.0 + 0.0im], :X => [0.0 + 0.0im 1.0 + 0.0im; 1.0 + 0.0im 0.0 + 0.0im], :Y => [0.0 + 0.0im 0.0 - 1.0im; 0.0 + 1.0im 0.0 + 0.0im])
+>>> _paulis = var_paulis
+>>> _mod_qc = mod_qc
+>>> mod_qc = JuliaValGC(lib, jl, _mod_qc)
+>>> mod_qc
+QuantumCollocation
+>>> paulis
+Dict{Symbol, Matrix{ComplexF64}}(:Z => [1.0 + 0.0im 0.0 + 0.0im; 0.0 + 0.0im -1.0 + 0.0im], :I => [1.0 + 0.0im 0.0 + 0.0im; 0.0 + 0.0im 1.0 + 0.0im], :X => [0.0 + 0.0im 1.0 + 0.0im; 1.0 + 0.0im 0.0 + 0.0im], :Y => [0.0 + 0.0im 0.0 - 1.0im; 0.0 + 1.0im 0.0 + 0.0im])
+>>> _gates = jl.get_global(_mod_qc, b'GATES')
+>>> gates = JuliaValGC(lib, jl, _gates)
+
+[69164] signal 11 (2): Segmentation fault: 11
+in expression starting at none:0
+lookup_typevalue at /Users/gennadiryan/.julia/dev/jl2py/target/lib/julia/libjulia-internal.1.11.2.dylib (unknown line)
+ijl_apply_generic at /Users/gennadiryan/.julia/dev/jl2py/target/lib/julia/libjulia-internal.1.11.2.dylib (unknown line)
+ijl_call1 at /Users/gennadiryan/.julia/dev/jl2py/target/lib/julia/libjulia-internal.1.11.2.dylib (unknown line)
+ffi_call_SYSV at /usr/lib/libffi.dylib (unknown line)
+Allocations: 5 (Pool: 5; Big: 0); GC: 0
+zsh: segmentation fault  DYLD_FALLBACK_LIBRARY_PATH=./target/lib:./target/lib/julia python3 -i 
+(env) gennadiryan@gennadiryan jl2py % 

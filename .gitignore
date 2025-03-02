@@ -1,1 +1,17 @@
+# C
+main
+main.o
+
+# Julia
 /Manifest.toml
+/target/
+
+# Python
+/env/
+/**/__pycache__/
+
+# IDE
+*.code-workspace
+
+# Misc
+.DS_Store
