@@ -2,6 +2,7 @@ from collections import OrderedDict
 from collections.abc import Callable, Mapping, MutableMapping
 from typing import Any, Generic, List, Optional, Set, Tuple, TypeVar, Union
 
+import sys
 import os
 import platform
 import random
@@ -664,9 +665,15 @@ def get_ctypes_arr(ty, *args):
 
 # cmd = "DYLD_FALLBACK_LIBRARY_PATH=target/lib:target/lib/julia python3 main.py"
 if __name__ == '__main__':
-    libdir = "./target/lib"
-    libname = "libjl2py.dylib" if platform.system() == "Darwin" else "libjl2py.so"
-    libpath = os.path.join(libdir, libname)
+    rootdir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir))
+
+    # libdir = "./target/lib"
+    libdir = os.path.join(rootdir, 'target', 'lib')
+    # libname = "libjl2py.dylib" if platform.system() == "Darwin" else "libjl2py.so"
+    libname = 'jl2py'
+    libext = 'dylib' if sys.platform == 'darwin' else 'so'
+    libfile = (os.path.extsep).join(('lib{}'.format(libname), libext))
+    libpath = os.path.join(libdir, libfile)
 
     libfuncs = dict(
         jl_eval_string=((c_char_p,), c_void_p),
