@@ -93,7 +93,15 @@ class QuantumSystem:
 
 
 
-class QuantumStateSmoothPulseProblem:
+class QuantumControlProblem:
+    def solve(self, **kwargs) -> None:
+        if len(kwargs) > 0:
+            raise NotImplementedError()
+        
+        fn_solve(self.value)
+
+
+class QuantumStateSmoothPulseProblem(QuantumControlProblem):
     def __init__(
         self,
         system: QuantumSystem,
@@ -103,6 +111,8 @@ class QuantumStateSmoothPulseProblem:
         dt: float | np.ndarray,
         **kwargs,
     ) -> None:
+        super().__init__() # maybe handle kwargs (Piccolo/Ipopt) options here?
+
         assert False not in [state_init.dtype == np.dtype('complex128') for state_init in states_init]
         assert False not in [state_goal.dtype == np.dtype('complex128') for state_goal in states_goal]
 
@@ -115,9 +125,11 @@ class QuantumStateSmoothPulseProblem:
 
         if len(kwargs) > 0:
             raise NotImplementedError()
+        
+        self.value = fn_qsspp(self.system, self.states_init, self.states_goal, self.T, self.dt)
 
 
-class UnitarySmoothPulseProblem:
+class UnitarySmoothPulseProblem(QuantumControlProblem):
     def __init__(
         self,
         system: QuantumSystem,
@@ -126,6 +138,8 @@ class UnitarySmoothPulseProblem:
         dt: float | np.ndarray,
         **kwargs,
     ) -> None:
+        super().__init__() # maybe handle kwargs (Piccolo/Ipopt) options here?
+
         assert operator.dtype == np.dtype('complex128')
         assert (not isinstance(dt, np.ndarray)) or (dt.dtype == np.dtype('float64'))
 
