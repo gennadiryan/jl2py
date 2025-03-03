@@ -51,6 +51,7 @@ def get_tparams(ty):
     return [JuliaValGC(c_void_p.from_address(_ty_params + ctypes.sizeof(_ty_params_len) + (ctypes.sizeof(c_void_p) * i))) for i in range(_ty_params_len.value)]
 
 
+
 def dump_paulis():
     ks = 'I X Y Z'.split()
     ret = dict()
@@ -68,15 +69,77 @@ def dump_gates():
     return ret
 
 
-def quantum_system(h_drift: np.ndarray, h_drives: list[np.ndarray]) -> JuliaVal:
-    pass
 
-def unitary_smooth_pulse_problem(system: JuliaVal, operator: np.ndarray, T: int, dt: float) -> JuliaVal:
-    pass
+class QuantumSystem:
+    def __init__(
+        self,
+        h_drift: np.ndarray | None = None,
+        h_drives: list[np.ndarray] | None = None,
+        **kwargs,
+    ) -> None:
+        assert (h_drift is None) or (h_drift.dtype == np.dtype('complex128'))
+        assert (h_drives is None) or (False not in [h_drive.dtype == np.dtype('complex128') for h_drive in h_drives])
 
-def quantum_state_smooth_pulse_problem(system: JuliaVal, inits: list[np.ndarray], goals: list[np.ndarray], T: int, dt: float) -> JuliaVal:
-    pass
+        self.h_drift = ndarr_to_complexf64(h_drift) if h_drift is not None else None
+        self.h_drives = ndarrs_to_mat_complexf64(h_drives) if h_drives is not None else None # Julia already handles case of len(h_drives) == 0
 
+        if len(kwargs) > 0:
+            raise NotImplementedError()
+
+        self.args = [_ for _ in (self.h_drift, self.h_drives) if _ is not None]
+        self.kwargs = dict([_ for _ in kwargs.items()]) # noop for the time being
+
+        self.value = fn_qs(*self.args)
+
+
+
+class QuantumStateSmoothPulseProblem:
+    def __init__(
+        self,
+        system: QuantumSystem,
+        states_init: list[np.ndarray],
+        states_goal: list[np.ndarray],
+        T: int,
+        dt: float | np.ndarray,
+        **kwargs,
+    ) -> None:
+        assert False not in [state_init.dtype == np.dtype('complex128') for state_init in states_init]
+        assert False not in [state_goal.dtype == np.dtype('complex128') for state_goal in states_goal]
+
+        self.system = system.value
+        self.states_init = ndarrs_to_mat_complexf64(states_init)
+        self.states_goal = ndarrs_to_mat_complexf64(states_goal)
+
+        self.T = JuliaValGC(jl.box_int64(T))
+        self.dt = JuliaValGC(jl.box_float64(dt)) if not isinstance(dt, np.ndarray) else JuliaValGC(ptr_to_arr(jl, jl.float64_type(), dt.shape, dt.ctypes.data, own=False))
+
+        if len(kwargs) > 0:
+            raise NotImplementedError()
+
+
+class UnitarySmoothPulseProblem:
+    def __init__(
+        self,
+        system: QuantumSystem,
+        operator: np.ndarray,
+        T: int,
+        dt: float | np.ndarray,
+        **kwargs,
+    ) -> None:
+        assert operator.dtype == np.dtype('complex128')
+        assert (not isinstance(dt, np.ndarray)) or (dt.dtype == np.dtype('float64'))
+
+        self.system = system.value
+        self.operator = ndarr_to_complexf64(operator)
+        self.T = JuliaValGC(jl.box_int64(T))
+        self.dt = JuliaValGC(jl.box_float64(dt)) if not isinstance(dt, np.ndarray) else JuliaValGC(ptr_to_arr(jl, jl.float64_type(), dt.shape, dt.ctypes.data, own=False))
+
+        if len(kwargs) > 0:
+            raise NotImplementedError()
+        
+        self.value = fn_uspp(self.system, self.operator, self.T, self.dt)
+
+    
 
 def get_complexf64():
     return get_global(JuliaValGC(jl.base_module()), 'ComplexF64')
@@ -207,6 +270,7 @@ if __name__ == '__main__':
         jl_bool_type=c_void_p,
         jl_uint8_type=c_void_p,
         jl_int64_type=c_void_p,
+        jl_float64_type=c_void_p,
         jl_nothing_type=c_void_p,
         jl_voidpointer_type=c_void_p,
         jl_uint8pointer_type=c_void_p,
@@ -249,8 +313,8 @@ if __name__ == '__main__':
 
     fn_solve = get_global(mod_qc, 'solve!')
 
-    # fn_unitary_fidelity = get_global(mod_qc, 'unitary_rollout_fidelity')
-    # fn_fidelity = get_global(mod_qc, 'unitary_rollout_fidelity')
+    fn_unitary_fidelity = get_global(mod_qc, 'unitary_fidelity') # unitary_fidelity -> unitary_rollout_fidelity since core peeloff
+    fn_fidelity = get_global(mod_qc, 'fidelity') # fidelity -> rollout_fidelity since core peeloff
     fn_plot = get_global(mod_qc, 'plot_unitary_populations')
     fn_display = get_global(mod_qc, 'display')
 
