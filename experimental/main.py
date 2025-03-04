@@ -201,11 +201,11 @@ class JuliaVal:
         fns = _getattr('fns')
         val = _getattr('val')
 
-        args = get_ctypes_arr(c_void_p, *map(_getattr('_convert_to'), args))
+        argsptr = get_ctypes_arr(c_void_p, *map(_getattr('_convert_to'), args))
         nargs = len(args)
 
         # TODO(jack-champagne): add kwargs call here
-        res = fns.call(val, args, nargs) # TODO: handle bad return values (i.e. `res is None` yet no exception thrown)
+        res = fns.call(val, argsptr, nargs) # TODO: handle bad return values (i.e. `res is None` yet no exception thrown)
 
         # see github.com/JuliaLang/julia/test/embedding/embedding.c
         eo = fns.exception_occurred()
@@ -303,12 +303,16 @@ def add_ref(fns, val):
     # gc = fns.gc_enable(0)
 
     setindex = fns.get_global(fns.base_module(), fns.symbol(b'setindex!'))
-    res = fns.call3(setindex, fns.get_global(fns.main_module(), fns.symbol(b'refs')), fns.call1(get_ref_any_type(fns), val), val)
+    # res = fns.call3(setindex, fns.get_global(fns.main_module(), fns.symbol(b'refs')), fns.call1(get_ref_any_type(fns), val), val)
+    # ref = fns.call1(get_ref_any_type(fns), val)
+    ref = fns.new_structv(get_ref_any_type(fns), get_ctypes_arr(c_void_p, val), 1)
+    res = fns.call3(setindex, fns.get_global(fns.main_module(), fns.symbol(b'refs')), ref, ref)
 
     # fns.gc_enable(gc)
 
     if res is None:
         raise ValueError()
+    return ref
 
 
 def del_ref(fns, val):
@@ -470,7 +474,7 @@ if __name__ == '__main__':
         jl_unbox_voidpointer=((c_void_p,), c_void_p),
         jl_string_ptr=((c_void_p,), c_char_p),
 
-        jl_egal=((c_void_p, c_void_p,), c_void_p),
+        jl_egal=((c_void_p, c_void_p,), c_int),
 
         jl_gc_enable=((c_int,), c_int),
         jl_gc_is_enabled=(None, c_int),
