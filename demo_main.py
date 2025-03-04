@@ -267,7 +267,9 @@ class ndarray_from_value(np.ndarray):
         uint64=('uint64', 1),
     )
     #
-    def __init__(self, value: JuliaValGCv2) -> None:
+    # def __init__(self, value: JuliaValGCv2) -> None:
+    @staticmethod
+    def cast(value: JuliaValGCv2) -> np.ndarray:
         prod = lambda _: (lambda f: f(f, _))(lambda f, args: 1 if len(args) == 0 else (args[-1] * f(f, args[:-1])))
         #
         arr_ty = JuliaType.typeof(value)
@@ -279,12 +281,12 @@ class ndarray_from_value(np.ndarray):
             complex_ty_param = JuliaValGCv2(get_svec_arr(arr_ty_param.parameters)[0])
             complex_ty_param_name = JuliaSymbol.cast(complex_ty_param.name.name)
             arr_ty_param_name = 'ComplexF64' if complex_ty_param_name == 'Float64' else ('Complex32' if complex_ty_param_name == 'Float32' else None)
-        assert arr_ty_param_name in self._dtype_map.keys()
-        assert arr_ty_param_name in self._ctypes_dtype_map.keys()
+        assert arr_ty_param_name in ndarray_from_value._dtype_map.keys()
+        assert ndarray_from_value._dtype_map[arr_ty_param_name] in ndarray_from_value._ctypes_dtype_map.keys()
         #
-        dtype = self._dtype_map[arr_ty_param_name]
+        dtype = ndarray_from_value._dtype_map[arr_ty_param_name]
         np_dtype = np.dtype(dtype)
-        ctypes_dtype, ctypes_factor = self._ctypes_dtype_map[dtype]
+        ctypes_dtype, ctypes_factor = ndarray_from_value._ctypes_dtype_map[dtype]
         ctypes_dtype = np.ctypeslib.as_ctypes_type(np.dtype(ctypes_dtype))
         #
         dims = JuliaInt.cast(JuliaValGCv2(get_svec_arr(arr_ty.parameters)[1]))
@@ -296,12 +298,13 @@ class ndarray_from_value(np.ndarray):
         # valptr = ctypes.cast(valptr, ctypes.POINTER(ctypes_dtype))
         # or
         val_arr = (ctypes_dtype * size).from_address(val_ptr)
-        np_arr = np.ctypeslib.as_array(val_arr).reshape(shape).view(dtype=np_dtype)
-        # assert val_ptr == np_arr.ctypes.data
+        np_arr = np.ctypeslib.as_array(val_arr).view(dtype=np_dtype).reshape(shape[::-1])
+        assert val_ptr == np_arr.ctypes.data
         #
-        super().__init__(np_arr)
-        assert self.ctypes.data == val_ptr
-        self._jl_value = value
+        # super().__init__(np_arr)
+        # assert self.ctypes.data == val_ptr
+        # self._jl_value = value
+        return np_arr
 
 
 
