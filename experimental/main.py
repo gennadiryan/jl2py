@@ -15,7 +15,7 @@ class as_object(object):
         object.__setattr__(self, 'prefix', prefix)
         object.__setattr__(self, 'it', kwargs)
     def __getattribute__(self, name):
-        return object.__getattribute__(self, 'it').get(f'{object.__getattribute__(self, 'prefix')}{name}', None)
+        return object.__getattribute__(self, 'it').get(f"{object.__getattribute__(self, 'prefix')}{name}", None)
     def __dir__(self):
         prefix = object.__getattribute__(self, 'prefix')
         return sorted([k[len(prefix):] for k in object.__getattribute__(self, 'it').keys() if k[:len(prefix)] == prefix])

@@ -3,6 +3,8 @@ import os
 import ctypes
 from ctypes import cdll, c_double, c_float, c_int, c_int32, c_int64, c_uint, c_uint32, c_uint64, c_size_t, c_char_p, c_void_p
 
+import sys
+import platform
 import numpy as np
 
 from experimental.main import JuliaLib, CDLLUtils, JuliaVal, JuliaValGC, as_object, ptr_to_arr, arr_to_ptr, get_ctypes_arr, init_JuliaVal, init_JuliaValGC, add_ref, del_ref
@@ -496,9 +498,13 @@ def ndarrs_to_mat_complexf64(ndarrs, own=False):
 
 
 if __name__ == '__main__':
-    libdir = "/Users/gennadiryan/.julia/dev/jl2py/target/lib"
-    libname = "libjl2py.dylib"
-    libpath = os.path.join(libdir, libname)
+    rootdir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir))
+
+    libdir = os.path.join(rootdir, 'jl2py', 'target', 'lib')
+    libname = "jl2py"
+    libext = 'dylib' if sys.platform == 'darwin' else 'so'
+    libfile = (os.path.extsep).join(('lib{}'.format(libname), libext))
+    libpath = os.path.join(libdir, libfile)
 
     libfuncs = dict(
         jl_eval_string=((c_char_p,), c_void_p),
