@@ -466,26 +466,25 @@ class UnitarySmoothPulseProblem(QuantumControlProblem):
 def get_complexf64():
     return get_global(JuliaValGC(jl.base_module()), 'ComplexF64')
 
-def complexf64_to_ndarr(arr):
-    # prod = lambda f, args: 1 if len(args) == 0 else (args[-1] * f(f, args[:-1]))
-    prod = lambda _: (lambda f: f(f, _))(lambda f, args: 1 if len(args) == 0 else (args[-1] * f(f, args[:-1])))
+# def complexf64_to_ndarr(arr):
+#     # prod = lambda f, args: 1 if len(args) == 0 else (args[-1] * f(f, args[:-1]))
+#     prod = lambda _: (lambda f: f(f, _))(lambda f, args: 1 if len(args) == 0 else (args[-1] * f(f, args[:-1])))
 
-    shape = tuple(jl.unbox_int64(ptr(getindex(arr.size, JuliaValGC(jl.box_int64(i + 1))))) for i in range(2))
-    size = prod(shape)
+#     shape = tuple(jl.unbox_int64(ptr(getindex(arr.size, JuliaValGC(jl.box_int64(i + 1))))) for i in range(2))
+#     size = prod(shape)
 
-    arr = arr_to_ptr(jl, c_double, np.dtype('float64'), (*shape, 2), size * 2, arr)
-    arr = arr.reshape((size, 2)).astype('complex128')
-    arr = (arr[:, 0] + (arr[:, 1] * 1j)).reshape(shape[::-1]).transpose(tuple(range(len(shape)))[::-1])
-    return arr
+#     arr = arr_to_ptr(jl, c_double, np.dtype('float64'), (*shape, 2), size * 2, arr)
+#     arr = arr.reshape((size, 2)).astype('complex128')
+#     arr = (arr[:, 0] + (arr[:, 1] * 1j)).reshape(shape[::-1]).transpose(tuple(range(len(shape)))[::-1])
+#     return arr
 
-def ndarr_to_complexf64(ndarr, own=False):
-    return JuliaValGC(ptr_to_arr(jl, ptr(get_complexf64()), ndarr.shape[::-1], ndarr.ctypes.data, own=own))
+# def ndarr_to_complexf64(ndarr, own=False):
+#     return JuliaValGC(ptr_to_arr(jl, ptr(get_complexf64()), ndarr.shape[::-1], ndarr.ctypes.data, own=own))
 
-def ndarrs_to_mat_complexf64(ndarrs, own=False):
-    # assuming that each ndarr is such that len(ndarr.shape) == 2
-    mat_complexf64_arrty = JuliaValGC(jl.apply_array_type(ptr(get_complexf64()), 2))
-    return JuliaValGC(ptr_to_arr(jl, ptr(mat_complexf64_arrty), (len(ndarrs),), get_ctypes_arr(c_void_p, *[ptr(ndarr_to_complexf64(ndarr)) for ndarr in ndarrs]), own=own))
-
+# def ndarrs_to_mat_complexf64(ndarrs, own=False):
+#     # assuming that each ndarr is such that len(ndarr.shape) == 2
+#     mat_complexf64_arrty = JuliaValGC(jl.apply_array_type(ptr(get_complexf64()), 2))
+#     return JuliaValGC(ptr_to_arr(jl, ptr(mat_complexf64_arrty), (len(ndarrs),), get_ctypes_arr(c_void_p, *[ptr(ndarr_to_complexf64(ndarr)) for ndarr in ndarrs]), own=own))
 
 
 # def demo_dump_complexf64_ndarr():
