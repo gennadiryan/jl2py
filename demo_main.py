@@ -10,19 +10,15 @@ from experimental.main import JuliaLib, CDLLUtils, JuliaVal, JuliaValGC, as_obje
 
 """
 TODO:
-    - write functions implementing [Unitary,QuantumState]SmoothPulseProblem
     - add support for additional QCPs/problem templates (e.g. unitary sampling problem)
     - add support for customized initial trajectories
     - add more support for/examples of retrieving data from trajectories
     - generalize inputs (as best as possible) to other <: Number types besides ComplexF64 (currently requires special handling due to numpy representation of complex128)
 
-    - write tests comparing ptr_to_arr(..., own=True) vs ptr_to_arr(..., own=False)
-    - write tests based on `@testitem`s from [unitary,quantum_state]_smooth_pulse_problem.jl (to investigate limitations of JuliaVal API as well as to get some ideas for demo tasks, esp. as we plan compare to test QuTIP on the same tasks)
-
     - add check in JuliaVec.__init__ to validate that eltype is such that `!Base.allocatedinline(eltype)`, or `!isimmutable(eltype) || !isbitstype(eltype)`
     - opposite for JuliaArr.__init__
 
-    - consider making JuliaArr and ndarray_from_value the smae class (rely on MRO perhaps?)
+    - consider making JuliaArr and ndarray_from_value the same class (rely on MRO perhaps?)
     
 
 main.py TODO:
@@ -48,6 +44,10 @@ DONE:
     - add refcounts (for when multiple JuliaVal instances point to same ptr)
     - rethink ref scheme; can just wrap everything in references, or else test for immutables and wrap them only;
         also want a better way to prevent GC while pushing to the `refs` dict/set than just turning on/off the GC
+
+    - write tests comparing ptr_to_arr(..., own=True) vs ptr_to_arr(..., own=False)
+    - write functions implementing [Unitary,QuantumState]SmoothPulseProblem
+    - write tests based on `@testitem`s from [unitary,quantum_state]_smooth_pulse_problem.jl (to investigate limitations of JuliaVal API as well as to get some ideas for demo tasks, esp. as we plan compare to test QuTIP on the same tasks)
 """
 
 
@@ -729,6 +729,8 @@ if __name__ == '__main__':
         plot = get_global(mod_qc, 'plot_unitary_populations')(problem.value.trajectory)
         display = get_global(mod_qc, 'display')(plot)
 
+        return problem.value.trajectory
+
 
     def demo_quantum_state_smooth_pulse_problem():
         system = QuantumSystem(h_drift=(0.1 * gates['Z']), h_drives=[gates['X'], gates['Y']])
@@ -744,9 +746,20 @@ if __name__ == '__main__':
         print(f'fidelity=(before={fidelity_initial},after={fidelity_final})')
         print()
 
+        return problem.value.trajectory
 
-    demo_unitary_smooth_pulse_problem()
-    demo_quantum_state_smooth_pulse_problem()
+
+    # demo_unitary_smooth_pulse_problem()
+    # demo_quantum_state_smooth_pulse_problem()
+    # print('Done!')
+
+    unitary_traj = demo_unitary_smooth_pulse_problem()
+    jl.gc_collect(1)
+    quantum_state_traj = demo_quantum_state_smooth_pulse_problem()
+    jl.gc_collect(1)
     print('Done!')
+
+    # kts = JuliaValGCv2(jl.eval_string(b'[typeof(k.x) for k in keys(refs)]'))
+    # val = object.__getattribute__(kts, '__repr__')()
 
     
