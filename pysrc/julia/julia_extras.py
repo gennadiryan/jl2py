@@ -6,7 +6,7 @@ from ctypes import cdll, c_double, c_float, c_int, c_int32, c_int64, c_uint, c_u
 import numpy as np
 
 # from experimental.main import JuliaLib, CDLLUtils, JuliaVal, JuliaValGC, as_object, ptr_to_arr, arr_to_ptr, get_ctypes_arr, init_JuliaVal, init_JuliaValGC, add_ref, del_ref
-from .julia_value import init_jl, ptr_to_arr, arr_to_ptr, get_ctypes_arr, JuliaVal, JuliaValGC
+from .julia_value import init_jl, ptr_to_arr, arr_to_ptr, get_nt, get_ctypes_arr, JuliaVal, JuliaValGC
 
 """
 TODO:
@@ -72,6 +72,19 @@ def get_svec_arr(svec): # no risk of double-free since we use here c_void_p_Arra
 
 def get_sym_name(sym):
     return ctypes.string_at(ptr(sym) + (ctypes.sizeof(c_void_p) * 3)).decode()
+
+
+def call_with_kwargs(fn, args, names, vals):
+    tys = [JuliaType.typeof(_) for _ in vals]
+    
+    _fn = ptr(fn)
+    _args, _vals, _tys = [list(map(ptr, _)) for _ in (args, vals, tys)]
+
+    nt = JuliaValGC(get_nt(jl, names, _vals, _tys))
+    _nt = ptr(nt)
+    
+    carr_args = get_ctypes_arr(c_void_p, *(_nt, _fn, *_args))
+    return JuliaValGC(jl.call(jl.kwcall_func(), carr_args, len(args) + 2))
 
 
 class JuliaType(JuliaValGC):
