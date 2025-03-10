@@ -6,8 +6,8 @@ from ctypes import cdll, c_double, c_float, c_int, c_int32, c_int64, c_uint, c_u
 import numpy as np
 
 # from experimental.main import JuliaLib, CDLLUtils, JuliaVal, JuliaValGC, as_object, ptr_to_arr, arr_to_ptr, get_ctypes_arr, init_JuliaVal, init_JuliaValGC, add_ref, del_ref
-from julia.julia_value import init_jl, ptr_to_arr, arr_to_ptr, get_ctypes_arr, JuliaVal, JuliaValGC
-from julia.julia_extras import get_global, JuliaType, JuliaNum, JuliaInt, JuliaFloat, JuliaComplex, JuliaSymbol, JuliaVec, JuliaArr, ndarray_from_value, println, getindex
+from julia.julia_value import init_jl, ptr_to_arr, arr_to_ptr, get_ctypes_arr, get_nt, JuliaVal, JuliaValGC
+from julia.julia_extras import ptr, get_global, call_with_kwargs, JuliaType, JuliaNum, JuliaInt, JuliaFloat, JuliaComplex, JuliaSymbol, JuliaVec, JuliaArr, ndarray_from_value, println, getindex
 
 """
 TODO:
@@ -100,11 +100,35 @@ class QuantumSystem:
 
 
 class QuantumControlProblem:
-    def solve(self, **kwargs) -> None:
+    def solve(self, max_iter: int | None = None, **kwargs) -> None:
         if len(kwargs) > 0:
             raise NotImplementedError()
-        #
-        # fn_solve(self.value)
+        
+        # if max_iter is not None:
+        #     self.value.ipopt_options.max_iter = JuliaInt(max_iter)
+
+        if max_iter is not None:
+            fn = get_global(mod_qc, 'solve!')
+            args = [self.value,]
+            names = ['max_iter']
+            vals = [JuliaInt(max_iter)]
+            
+            # def call_with_kwargs(fn, args, names, vals):
+            #     tys = [JuliaType.typeof(_) for _ in vals]
+                
+            #     _fn = ptr(fn)
+            #     _args, _vals, _tys = [list(map(ptr, _)) for _ in (args, vals, tys)]
+
+            #     nt = JuliaValGC(get_nt(jl, names, _vals, _tys))
+            #     _nt = ptr(nt)
+                
+            #     carr_args = get_ctypes_arr(c_void_p, *(_nt, _fn, *_args))
+            #     return JuliaValGC(jl.call(jl.kwcall_func(), carr_args, len(args) + 2))
+            
+            return call_with_kwargs(fn, args, names, vals)
+
+            # return JuliaValGC(call_with_kwargs(jl, fn, args, names, vals, tys))
+        
         get_global(mod_qc, 'solve!')(self.value)
 
 
@@ -171,6 +195,29 @@ class UnitarySmoothPulseProblem(QuantumControlProblem):
             raise NotImplementedError()
         
         self.value = get_global(mod_qc, 'UnitarySmoothPulseProblem')(self.system.value, self.operator, JuliaInt(T), JuliaFloat(dt))
+
+
+class UnitaryMinimumTimeProblem(QuantumControlProblem):
+    def __init__(
+        self,
+        prob: QuantumControlProblem,
+        system: QuantumSystem,
+        final_fidelity: float | None = None,
+    ) -> None:
+        super().__init__()
+
+        self.prob = prob
+        self.system = system
+
+        fn = get_global(mod_qc, 'UnitaryMinimumTimeProblem')
+        args = [self.prob.value]
+        names = ['final_fidelity'] if final_fidelity is not None else list()
+        vals = [JuliaFloat(final_fidelity)] if final_fidelity is not None else list()
+
+        self.value = call_with_kwargs(fn, args, names, vals)
+
+        # self.value = get_global(mod_qc, 'UnitaryMinimumTimeProblem')(self.prob.value, self.system.value)
+        
 
 
 
@@ -267,6 +314,12 @@ if __name__ == '__main__':
 
     # Remember to ask about "libc++abi: terminating due to uncaught exception of type Ipopt::RESTORATION_MAXITER_EXCEEDED"
 
+    def traj_to_mat(traj):
+        dim_cols, dim_rows = tuple(jl.unbox_int64(ptr(_)) for _ in (traj.dim, traj.T))
+        data_vec = ndarray_from_value(traj.datavec)
+        data_mat = data_vec.reshape((dim_rows, dim_cols)).transpose()
+        return data_mat
+
 
     paulis = dump_paulis(copy=True)
     gates = dump_gates(copy=True)
@@ -288,6 +341,33 @@ if __name__ == '__main__':
         display = get_global(mod_qc, 'display')(plot)
 
         return problem.value.trajectory
+
+    def demo_unitary_minimum_time_problem():
+        system = QuantumSystem(h_drives=[paulis['X'], paulis['Y']])
+        problem = UnitarySmoothPulseProblem(system, gates['H'], 50, 0.2)
+        
+        fidelity_initial = JuliaFloat.cast(get_global(mod_qc, 'unitary_fidelity')(problem.value))
+        problem.solve(max_iter=50)
+        fidelity_final = JuliaFloat.cast(get_global(mod_qc, 'unitary_fidelity')(problem.value))
+        assert fidelity_final > fidelity_initial
+        print(f'unitary_fidelity=(before={fidelity_initial},after={fidelity_final})')
+        print()
+
+        plot = get_global(mod_qc, 'plot_unitary_populations')(problem.value.trajectory)
+        display = get_global(mod_qc, 'display')(plot)
+
+        problem_min = UnitaryMinimumTimeProblem(problem, system, final_fidelity=0.9999)
+        problem_min.solve(max_iter=50)
+        fidelity_min = JuliaFloat.cast(get_global(mod_qc, 'unitary_fidelity')(problem_min.value))
+
+        # duration = JuliaFloat.cast(get_global(mod_qc, 'get_timesteps')(problem.value.trajectory))
+        # duration_min = JuliaFloat.cast(get_global(mod_qc, 'get_timesteps')(problem_min.value.trajectory))
+
+        print(f'fidelity_min={fidelity_min}')
+        # print(f'duration=(initial={duration},min={duration_min})')
+
+
+        return problem.value.trajectory, problem_min.value.trajectory
 
 
     def demo_quantum_state_smooth_pulse_problem():
@@ -311,7 +391,9 @@ if __name__ == '__main__':
     # demo_quantum_state_smooth_pulse_problem()
     # print('Done!')
 
-    unitary_traj = demo_unitary_smooth_pulse_problem()
+    unitary_traj_1 = demo_unitary_smooth_pulse_problem()
+    jl.gc_collect(1)
+    unitary_traj_2, unitary_min_traj = demo_unitary_minimum_time_problem()
     jl.gc_collect(1)
     quantum_state_traj = demo_quantum_state_smooth_pulse_problem()
     jl.gc_collect(1)
