@@ -4,7 +4,7 @@ import os
 from ctypes import *
 
 
-rootdir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir))
+rootdir = os.path.abspath(os.path.join(os.path.dirname(__file__), *([os.path.pardir] * 2)))
 
 libdir = os.path.join(rootdir, 'target', 'lib')
 libname = 'jl2py'
