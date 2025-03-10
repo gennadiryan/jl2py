@@ -7,6 +7,7 @@ import numpy as np
 
 # from experimental.main import JuliaLib, CDLLUtils, JuliaVal, JuliaValGC, as_object, ptr_to_arr, arr_to_ptr, get_ctypes_arr, init_JuliaVal, init_JuliaValGC, add_ref, del_ref
 from experimental.julia_value import init_jl, ptr_to_arr, arr_to_ptr, get_ctypes_arr, JuliaVal, JuliaValGC
+from experimental.julia_extras import get_global, JuliaType, JuliaNum, JuliaInt, JuliaFloat, JuliaComplex, JuliaSymbol, JuliaVec, JuliaArr, ndarray_from_value, println, getindex
 
 """
 TODO:
@@ -52,215 +53,215 @@ DONE:
 
 
 
-def ptr(value):
-    return object.__getattribute__(value, 'val')
+# def ptr(value):
+#     return object.__getattribute__(value, 'val')
 
-def get_global(module, name):
-    return JuliaValGC(jl.get_global(ptr(module), jl.symbol(name.encode())))
+# def get_global(module, name):
+#     return JuliaValGC(jl.get_global(ptr(module), jl.symbol(name.encode())))
 
-def get_tparams(ty):
-    _ty = ptr(ty)
-    _ty_params = jl.get_nth_field(_ty, jl.field_index(jl.typeof(_ty), jl.symbol('parameters'.encode()), 0))
-    _ty_params_len = c_size_t.from_address(_ty_params)
-    return [JuliaValGC(c_void_p.from_address(_ty_params + ctypes.sizeof(_ty_params_len) + (ctypes.sizeof(c_void_p) * i))) for i in range(_ty_params_len.value)]
+# def get_tparams(ty):
+#     _ty = ptr(ty)
+#     _ty_params = jl.get_nth_field(_ty, jl.field_index(jl.typeof(_ty), jl.symbol('parameters'.encode()), 0))
+#     _ty_params_len = c_size_t.from_address(_ty_params)
+#     return [JuliaValGC(c_void_p.from_address(_ty_params + ctypes.sizeof(_ty_params_len) + (ctypes.sizeof(c_void_p) * i))) for i in range(_ty_params_len.value)]
 
-def get_svec_len(svec):
-    return c_size_t.from_address(ptr(svec))
+# def get_svec_len(svec):
+#     return c_size_t.from_address(ptr(svec))
 
-def get_svec_arr(svec): # no risk of double-free since we use here c_void_p_Array_n.from_address rather than c_void_p_Array_n.__init__ constructor
-    return (c_void_p * get_svec_len(svec).value).from_address(ptr(svec) + ctypes.sizeof(c_size_t))
+# def get_svec_arr(svec): # no risk of double-free since we use here c_void_p_Array_n.from_address rather than c_void_p_Array_n.__init__ constructor
+#     return (c_void_p * get_svec_len(svec).value).from_address(ptr(svec) + ctypes.sizeof(c_size_t))
 
-def get_sym_name(sym):
-    return ctypes.string_at(ptr(sym) + (ctypes.sizeof(c_void_p) * 3)).decode()
-
-
-class JuliaType(JuliaValGC):
-    @staticmethod
-    def typeof(value: JuliaValGC) -> JuliaValGC:
-        return JuliaType(jl.typeof(ptr(value)))
+# def get_sym_name(sym):
+#     return ctypes.string_at(ptr(sym) + (ctypes.sizeof(c_void_p) * 3)).decode()
 
 
-class JuliaNum(JuliaValGC):
-    pass
-
-class JuliaInt(JuliaNum):
-    def __init__(self, value: int) -> None:
-        super().__init__(jl.box_int64(int(value)))
-    @staticmethod
-    def cast(value: JuliaValGC) -> int:
-        return jl.unbox_int64(ptr(value))
-
-class JuliaFloat(JuliaNum):
-    def __init__(self, value: float) -> None:
-        super().__init__(jl.box_float64(float(value)))
-    @staticmethod
-    def cast(value: JuliaValGC) -> float:
-        return jl.unbox_float64(ptr(value))
-
-class JuliaComplex(JuliaNum):
-    def __init__(self, value: complex) -> None:
-        super().__init__(jl.call2(jl.get_global(jl.base_module(), ptr(JuliaSymbol('ComplexF64'))), *[ptr(JuliaFloat(_)) for _ in (value.real, value.imag)]))
+# class JuliaType(JuliaValGC):
+#     @staticmethod
+#     def typeof(value: JuliaValGC) -> JuliaValGC:
+#         return JuliaType(jl.typeof(ptr(value)))
 
 
-class JuliaSymbol(JuliaValGC):
-    def __init__(self, value: str) -> None:
-        super().__init__(jl.symbol(value.encode()))
-    @staticmethod
-    def cast(value: JuliaValGC) -> str:
-        return get_sym_name(value)
+# class JuliaNum(JuliaValGC):
+#     pass
+
+# class JuliaInt(JuliaNum):
+#     def __init__(self, value: int) -> None:
+#         super().__init__(jl.box_int64(int(value)))
+#     @staticmethod
+#     def cast(value: JuliaValGC) -> int:
+#         return jl.unbox_int64(ptr(value))
+
+# class JuliaFloat(JuliaNum):
+#     def __init__(self, value: float) -> None:
+#         super().__init__(jl.box_float64(float(value)))
+#     @staticmethod
+#     def cast(value: JuliaValGC) -> float:
+#         return jl.unbox_float64(ptr(value))
+
+# class JuliaComplex(JuliaNum):
+#     def __init__(self, value: complex) -> None:
+#         super().__init__(jl.call2(jl.get_global(jl.base_module(), ptr(JuliaSymbol('ComplexF64'))), *[ptr(JuliaFloat(_)) for _ in (value.real, value.imag)]))
 
 
-class JuliaVec(JuliaValGC):
-    def __init__(self, vals: list[JuliaVal], eltype: JuliaVal | None = None, own: bool = False) -> None:
-        _getattr = lambda *_: object.__getattribute__(self, *_)
-        _setattr = lambda *_: object.__setattr__(self, *_)
+# class JuliaSymbol(JuliaValGC):
+#     def __init__(self, value: str) -> None:
+#         super().__init__(jl.symbol(value.encode()))
+#     @staticmethod
+#     def cast(value: JuliaValGC) -> str:
+#         return get_sym_name(value)
 
-        fns = _getattr('fns')
+
+# class JuliaVec(JuliaValGC):
+#     def __init__(self, vals: list[JuliaVal], eltype: JuliaVal | None = None, own: bool = False) -> None:
+#         _getattr = lambda *_: object.__getattribute__(self, *_)
+#         _setattr = lambda *_: object.__setattr__(self, *_)
+
+#         fns = _getattr('fns')
         
-        eltype = eltype if eltype is not None else JuliaValGC(fns.any_type())
-        carr_val = (c_void_p * len(vals))(*map(lambda _: object.__getattribute__(_, 'val'), vals))
-        val = ptr_to_arr(fns, object.__getattribute__(eltype, 'val'), (len(vals),), carr_val, own=own)
+#         eltype = eltype if eltype is not None else JuliaValGC(fns.any_type())
+#         carr_val = (c_void_p * len(vals))(*map(lambda _: object.__getattribute__(_, 'val'), vals))
+#         val = ptr_to_arr(fns, object.__getattribute__(eltype, 'val'), (len(vals),), carr_val, own=own)
 
-        super().__init__(val, keep=vals)
-        _setattr('carr_val', carr_val) # prevent GC of the memory region storing references to the elements
+#         super().__init__(val, keep=vals)
+#         _setattr('carr_val', carr_val) # prevent GC of the memory region storing references to the elements
     
-    def __getitem__(self, idx: int) -> JuliaVal:
-        # choosing not to directly use `Base.getindex` to avoid multiple dispatch on a function with large method table
+#     def __getitem__(self, idx: int) -> JuliaVal:
+#         # choosing not to directly use `Base.getindex` to avoid multiple dispatch on a function with large method table
 
-        _getattr = lambda *_: object.__getattribute__(self, *_)
-        _setattr = lambda *_: object.__setattr__(self, *_)
+#         _getattr = lambda *_: object.__getattribute__(self, *_)
+#         _setattr = lambda *_: object.__setattr__(self, *_)
 
-        fns = _getattr('fns')
-        val = _getattr('val')
+#         fns = _getattr('fns')
+#         val = _getattr('val')
 
-        try:
-            itemval = _getattr('carr_val')[idx]
-        except IndexError as e:
-            raise e
+#         try:
+#             itemval = _getattr('carr_val')[idx]
+#         except IndexError as e:
+#             raise e
 
-        return _getattr('_convert_from')(itemval)
+#         return _getattr('_convert_from')(itemval)
     
-    def __setitem__(self, idx: int, value: JuliaVal) -> None:
-        # choosing not to directly use `Base.setindex` to avoid multiple dispatch on a function with large method table
+#     def __setitem__(self, idx: int, value: JuliaVal) -> None:
+#         # choosing not to directly use `Base.setindex` to avoid multiple dispatch on a function with large method table
 
-        _getattr = lambda *_: object.__getattribute__(self, *_)
-        _setattr = lambda *_: object.__setattr__(self, *_)
+#         _getattr = lambda *_: object.__getattribute__(self, *_)
+#         _setattr = lambda *_: object.__setattr__(self, *_)
 
-        fns = _getattr('fns')
-        val = _getattr('val')
+#         fns = _getattr('fns')
+#         val = _getattr('val')
 
-        try:
-            _getattr('carr_val')[idx] = _getattr('_convert_to')(value)
-            _getattr('keep')[idx] = value
-        except IndexError as e:
-            raise e
+#         try:
+#             _getattr('carr_val')[idx] = _getattr('_convert_to')(value)
+#             _getattr('keep')[idx] = value
+#         except IndexError as e:
+#             raise e
 
 
-class JuliaArr(JuliaValGC):
-    _dtype_map = dict(
-        complex64='ComplexF32',
-        complex128='ComplexF64',
-        float16='Float16',
-        float32='Float32',
-        float64='Float64',
-        int8='Int8',
-        int16='Int16',
-        int32='Int32',
-        int64='Int64',
-        uint8='UInt8',
-        uint16='UInt16',
-        uint32='UInt32',
-        uint64='UInt64',
-    )
+# class JuliaArr(JuliaValGC):
+#     _dtype_map = dict(
+#         complex64='ComplexF32',
+#         complex128='ComplexF64',
+#         float16='Float16',
+#         float32='Float32',
+#         float64='Float64',
+#         int8='Int8',
+#         int16='Int16',
+#         int32='Int32',
+#         int64='Int64',
+#         uint8='UInt8',
+#         uint16='UInt16',
+#         uint32='UInt32',
+#         uint64='UInt64',
+#     )
 
-    def __init__(self, arr: np.ndarray, own: bool = False) -> None:
-        _getattr = lambda *_: object.__getattribute__(self, *_)
-        _setattr = lambda *_: object.__setattr__(self, *_)
+#     def __init__(self, arr: np.ndarray, own: bool = False) -> None:
+#         _getattr = lambda *_: object.__getattribute__(self, *_)
+#         _setattr = lambda *_: object.__setattr__(self, *_)
 
-        fns = _getattr('fns')
+#         fns = _getattr('fns')
 
-        ty_np = arr.dtype
-        shape_np = arr.shape
-        ptr_np = arr.ctypes.data
+#         ty_np = arr.dtype
+#         shape_np = arr.shape
+#         ptr_np = arr.ctypes.data
         
-        if ty_np.name not in _getattr('_dtype_map').keys():
-            raise TypeError(f'{arr.dtype} is unsupported')
+#         if ty_np.name not in _getattr('_dtype_map').keys():
+#             raise TypeError(f'{arr.dtype} is unsupported')
         
-        ty_jl = get_global(JuliaValGC(jl.base_module()), _getattr('_dtype_map')[ty_np.name])
-        val = ptr_to_arr(fns, ptr(ty_jl), shape_np[::-1], ptr_np, own=False)
+#         ty_jl = get_global(JuliaValGC(jl.base_module()), _getattr('_dtype_map')[ty_np.name])
+#         val = ptr_to_arr(fns, ptr(ty_jl), shape_np[::-1], ptr_np, own=False)
         
-        super().__init__(val, keep=[arr])
+#         super().__init__(val, keep=[arr])
         
     
-class ndarray_from_value(np.ndarray):
-    _dtype_map = dict(
-        ComplexF32='complex64',
-        ComplexF64='complex128',
-        Float16='float16',
-        Float32='float32',
-        Float64='float64',
-        Int8='int8',
-        Int16='int16',
-        Int32='int32',
-        Int64='int64',
-        UInt8='uint8',
-        UInt16='uint16',
-        UInt32='uint32',
-        UInt64='uint64',
-    )
-    _ctypes_dtype_map = dict(
-        complex64=('float32', 2),
-        complex128=('float64', 2),
-        float32=('float32', 1),
-        float64=('float64', 1),
-        int8=('int8', 1),
-        int16=('int16', 1),
-        int32=('int32', 1),
-        int64=('int64', 1),
-        uint8=('uint8', 1),
-        uint16=('uint16', 1),
-        uint32=('uint32', 1),
-        uint64=('uint64', 1),
-    )
-    #
-    # def __init__(self, value: JuliaValGCv2) -> None:
-    @staticmethod
-    def cast(value: JuliaValGC) -> np.ndarray:
-        prod = lambda _: (lambda f: f(f, _))(lambda f, args: 1 if len(args) == 0 else (args[-1] * f(f, args[:-1])))
-        #
-        arr_ty = JuliaType.typeof(value)
-        assert get_sym_name(arr_ty.name.name) == 'Array'
-        #
-        arr_ty_param = JuliaValGC(get_svec_arr(arr_ty.parameters)[0])
-        arr_ty_param_name = JuliaSymbol.cast(arr_ty_param.name.name)
-        if arr_ty_param_name == 'Complex':
-            complex_ty_param = JuliaValGC(get_svec_arr(arr_ty_param.parameters)[0])
-            complex_ty_param_name = JuliaSymbol.cast(complex_ty_param.name.name)
-            arr_ty_param_name = 'ComplexF64' if complex_ty_param_name == 'Float64' else ('Complex32' if complex_ty_param_name == 'Float32' else None)
-        assert arr_ty_param_name in ndarray_from_value._dtype_map.keys()
-        assert ndarray_from_value._dtype_map[arr_ty_param_name] in ndarray_from_value._ctypes_dtype_map.keys()
-        #
-        dtype = ndarray_from_value._dtype_map[arr_ty_param_name]
-        np_dtype = np.dtype(dtype)
-        ctypes_dtype, ctypes_factor = ndarray_from_value._ctypes_dtype_map[dtype]
-        ctypes_dtype = np.ctypeslib.as_ctypes_type(np.dtype(ctypes_dtype))
-        #
-        dims = JuliaInt.cast(JuliaValGC(get_svec_arr(arr_ty.parameters)[1]))
-        shape = tuple(JuliaInt.cast(getindex(value.size, JuliaInt(i + 1))) for i in range(dims))
-        size = prod(shape) * ctypes_factor
-        #
-        val_ptr = jl.unbox_voidpointer(ptr(value.ref.mem.ptr))
-        # # either
-        # valptr = ctypes.cast(valptr, ctypes.POINTER(ctypes_dtype))
-        # or
-        val_arr = (ctypes_dtype * size).from_address(val_ptr)
-        np_arr = np.ctypeslib.as_array(val_arr).view(dtype=np_dtype).reshape(shape[::-1])
-        assert val_ptr == np_arr.ctypes.data
-        #
-        # super().__init__(np_arr)
-        # assert self.ctypes.data == val_ptr
-        # self._jl_value = value
-        return np_arr
+# class ndarray_from_value(np.ndarray):
+#     _dtype_map = dict(
+#         ComplexF32='complex64',
+#         ComplexF64='complex128',
+#         Float16='float16',
+#         Float32='float32',
+#         Float64='float64',
+#         Int8='int8',
+#         Int16='int16',
+#         Int32='int32',
+#         Int64='int64',
+#         UInt8='uint8',
+#         UInt16='uint16',
+#         UInt32='uint32',
+#         UInt64='uint64',
+#     )
+#     _ctypes_dtype_map = dict(
+#         complex64=('float32', 2),
+#         complex128=('float64', 2),
+#         float32=('float32', 1),
+#         float64=('float64', 1),
+#         int8=('int8', 1),
+#         int16=('int16', 1),
+#         int32=('int32', 1),
+#         int64=('int64', 1),
+#         uint8=('uint8', 1),
+#         uint16=('uint16', 1),
+#         uint32=('uint32', 1),
+#         uint64=('uint64', 1),
+#     )
+#     #
+#     # def __init__(self, value: JuliaValGCv2) -> None:
+#     @staticmethod
+#     def cast(value: JuliaValGC) -> np.ndarray:
+#         prod = lambda _: (lambda f: f(f, _))(lambda f, args: 1 if len(args) == 0 else (args[-1] * f(f, args[:-1])))
+#         #
+#         arr_ty = JuliaType.typeof(value)
+#         assert get_sym_name(arr_ty.name.name) == 'Array'
+#         #
+#         arr_ty_param = JuliaValGC(get_svec_arr(arr_ty.parameters)[0])
+#         arr_ty_param_name = JuliaSymbol.cast(arr_ty_param.name.name)
+#         if arr_ty_param_name == 'Complex':
+#             complex_ty_param = JuliaValGC(get_svec_arr(arr_ty_param.parameters)[0])
+#             complex_ty_param_name = JuliaSymbol.cast(complex_ty_param.name.name)
+#             arr_ty_param_name = 'ComplexF64' if complex_ty_param_name == 'Float64' else ('Complex32' if complex_ty_param_name == 'Float32' else None)
+#         assert arr_ty_param_name in ndarray_from_value._dtype_map.keys()
+#         assert ndarray_from_value._dtype_map[arr_ty_param_name] in ndarray_from_value._ctypes_dtype_map.keys()
+#         #
+#         dtype = ndarray_from_value._dtype_map[arr_ty_param_name]
+#         np_dtype = np.dtype(dtype)
+#         ctypes_dtype, ctypes_factor = ndarray_from_value._ctypes_dtype_map[dtype]
+#         ctypes_dtype = np.ctypeslib.as_ctypes_type(np.dtype(ctypes_dtype))
+#         #
+#         dims = JuliaInt.cast(JuliaValGC(get_svec_arr(arr_ty.parameters)[1]))
+#         shape = tuple(JuliaInt.cast(getindex(value.size, JuliaInt(i + 1))) for i in range(dims))
+#         size = prod(shape) * ctypes_factor
+#         #
+#         val_ptr = jl.unbox_voidpointer(ptr(value.ref.mem.ptr))
+#         # # either
+#         # valptr = ctypes.cast(valptr, ctypes.POINTER(ctypes_dtype))
+#         # or
+#         val_arr = (ctypes_dtype * size).from_address(val_ptr)
+#         np_arr = np.ctypeslib.as_array(val_arr).view(dtype=np_dtype).reshape(shape[::-1])
+#         assert val_ptr == np_arr.ctypes.data
+#         #
+#         # super().__init__(np_arr)
+#         # assert self.ctypes.data == val_ptr
+#         # self._jl_value = value
+#         return np_arr
 
 
 
