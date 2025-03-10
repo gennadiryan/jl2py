@@ -5,8 +5,8 @@ from ctypes import cdll, c_double, c_float, c_int, c_int32, c_int64, c_uint, c_u
 
 import numpy as np
 
-from experimental.main import JuliaLib, CDLLUtils, JuliaVal, JuliaValGC, as_object, ptr_to_arr, arr_to_ptr, get_ctypes_arr, init_JuliaVal, init_JuliaValGC, add_ref, del_ref
-
+# from experimental.main import JuliaLib, CDLLUtils, JuliaVal, JuliaValGC, as_object, ptr_to_arr, arr_to_ptr, get_ctypes_arr, init_JuliaVal, init_JuliaValGC, add_ref, del_ref
+from experimental.julia_value import init_jl, ptr_to_arr, arr_to_ptr, get_ctypes_arr, JuliaVal, JuliaValGC
 
 """
 TODO:
@@ -56,13 +56,13 @@ def ptr(value):
     return object.__getattribute__(value, 'val')
 
 def get_global(module, name):
-    return JuliaValGCv2(jl.get_global(ptr(module), jl.symbol(name.encode())))
+    return JuliaValGC(jl.get_global(ptr(module), jl.symbol(name.encode())))
 
 def get_tparams(ty):
     _ty = ptr(ty)
     _ty_params = jl.get_nth_field(_ty, jl.field_index(jl.typeof(_ty), jl.symbol('parameters'.encode()), 0))
     _ty_params_len = c_size_t.from_address(_ty_params)
-    return [JuliaValGCv2(c_void_p.from_address(_ty_params + ctypes.sizeof(_ty_params_len) + (ctypes.sizeof(c_void_p) * i))) for i in range(_ty_params_len.value)]
+    return [JuliaValGC(c_void_p.from_address(_ty_params + ctypes.sizeof(_ty_params_len) + (ctypes.sizeof(c_void_p) * i))) for i in range(_ty_params_len.value)]
 
 def get_svec_len(svec):
     return c_size_t.from_address(ptr(svec))
@@ -83,62 +83,62 @@ def get_sym_name(sym):
 #     pass
 
 
-class JuliaValGCv2(JuliaVal):
-    def __init__(self, val: int | c_void_p, keep: list | None = None) -> None:
-        _getattr = lambda *_: object.__getattribute__(self, *_)
-        _setattr = lambda *_: object.__setattr__(self, *_)
+# class JuliaValGCv2(JuliaVal):
+#     def __init__(self, val: int | c_void_p, keep: list | None = None) -> None:
+#         _getattr = lambda *_: object.__getattribute__(self, *_)
+#         _setattr = lambda *_: object.__setattr__(self, *_)
 
-        fns = _getattr('fns')
-        _setattr('val', val)
-        _setattr('keep', list() if keep is None else keep) # prevent GC of values depended on by val
+#         fns = _getattr('fns')
+#         _setattr('val', val)
+#         _setattr('keep', list() if keep is None else keep) # prevent GC of values depended on by val
 
-        _setattr('_convert_to', lambda _: object.__getattribute__(_, 'val') if isinstance(_, JuliaVal) else _)
-        _setattr('_convert_from', lambda _: JuliaValGCv2(_))
+#         _setattr('_convert_to', lambda _: object.__getattribute__(_, 'val') if isinstance(_, JuliaVal) else _)
+#         _setattr('_convert_from', lambda _: JuliaValGCv2(_))
 
-        # add_ref(fns, _getattr('ref'))
-        _setattr('ref', add_ref(fns, val))
+#         # add_ref(fns, _getattr('ref'))
+#         _setattr('ref', add_ref(fns, val))
     
-    def __eq__(self, value: JuliaVal) -> bool:
-        _getattr = lambda *_: object.__getattribute__(self, *_)
-        _setattr = lambda *_: object.__setattr__(self, *_)
+#     def __eq__(self, value: JuliaVal) -> bool:
+#         _getattr = lambda *_: object.__getattribute__(self, *_)
+#         _setattr = lambda *_: object.__setattr__(self, *_)
 
-        fns = _getattr('fns')
+#         fns = _getattr('fns')
 
-        return bool(fns.egal(_getattr('_convert_to')(self), _getattr('_convert_to')(value)))
+#         return bool(fns.egal(_getattr('_convert_to')(self), _getattr('_convert_to')(value)))
     
-    def __del__(self) -> None:
-        _getattr = lambda *_: object.__getattribute__(self, *_)
-        _setattr = lambda *_: object.__setattr__(self, *_)
+#     def __del__(self) -> None:
+#         _getattr = lambda *_: object.__getattribute__(self, *_)
+#         _setattr = lambda *_: object.__setattr__(self, *_)
 
-        fns = _getattr('fns')
-        val = _getattr('val')
-        ref = _getattr('ref')
+#         fns = _getattr('fns')
+#         val = _getattr('val')
+#         ref = _getattr('ref')
 
-        # del_ref(fns, ref)
-        del_ref(fns, ref)
+#         # del_ref(fns, ref)
+#         del_ref(fns, ref)
 
 
-class JuliaType(JuliaValGCv2):
+class JuliaType(JuliaValGC):
     @staticmethod
-    def typeof(value: JuliaValGCv2) -> JuliaValGCv2:
+    def typeof(value: JuliaValGC) -> JuliaValGC:
         return JuliaType(jl.typeof(ptr(value)))
 
 
-class JuliaNum(JuliaValGCv2):
+class JuliaNum(JuliaValGC):
     pass
 
 class JuliaInt(JuliaNum):
     def __init__(self, value: int) -> None:
         super().__init__(jl.box_int64(int(value)))
     @staticmethod
-    def cast(value: JuliaValGCv2) -> int:
+    def cast(value: JuliaValGC) -> int:
         return jl.unbox_int64(ptr(value))
 
 class JuliaFloat(JuliaNum):
     def __init__(self, value: float) -> None:
         super().__init__(jl.box_float64(float(value)))
     @staticmethod
-    def cast(value: JuliaValGCv2) -> float:
+    def cast(value: JuliaValGC) -> float:
         return jl.unbox_float64(ptr(value))
 
 class JuliaComplex(JuliaNum):
@@ -146,22 +146,22 @@ class JuliaComplex(JuliaNum):
         super().__init__(jl.call2(jl.get_global(jl.base_module(), ptr(JuliaSymbol('ComplexF64'))), *[ptr(JuliaFloat(_)) for _ in (value.real, value.imag)]))
 
 
-class JuliaSymbol(JuliaValGCv2):
+class JuliaSymbol(JuliaValGC):
     def __init__(self, value: str) -> None:
         super().__init__(jl.symbol(value.encode()))
     @staticmethod
-    def cast(value: JuliaValGCv2) -> str:
+    def cast(value: JuliaValGC) -> str:
         return get_sym_name(value)
 
 
-class JuliaVec(JuliaValGCv2):
+class JuliaVec(JuliaValGC):
     def __init__(self, vals: list[JuliaVal], eltype: JuliaVal | None = None, own: bool = False) -> None:
         _getattr = lambda *_: object.__getattribute__(self, *_)
         _setattr = lambda *_: object.__setattr__(self, *_)
 
         fns = _getattr('fns')
         
-        eltype = eltype if eltype is not None else JuliaValGCv2(fns.any_type())
+        eltype = eltype if eltype is not None else JuliaValGC(fns.any_type())
         carr_val = (c_void_p * len(vals))(*map(lambda _: object.__getattribute__(_, 'val'), vals))
         val = ptr_to_arr(fns, object.__getattribute__(eltype, 'val'), (len(vals),), carr_val, own=own)
 
@@ -200,7 +200,7 @@ class JuliaVec(JuliaValGCv2):
             raise e
 
 
-class JuliaArr(JuliaValGCv2):
+class JuliaArr(JuliaValGC):
     _dtype_map = dict(
         complex64='ComplexF32',
         complex128='ComplexF64',
@@ -230,7 +230,7 @@ class JuliaArr(JuliaValGCv2):
         if ty_np.name not in _getattr('_dtype_map').keys():
             raise TypeError(f'{arr.dtype} is unsupported')
         
-        ty_jl = get_global(JuliaValGCv2(jl.base_module()), _getattr('_dtype_map')[ty_np.name])
+        ty_jl = get_global(JuliaValGC(jl.base_module()), _getattr('_dtype_map')[ty_np.name])
         val = ptr_to_arr(fns, ptr(ty_jl), shape_np[::-1], ptr_np, own=False)
         
         super().__init__(val, keep=[arr])
@@ -269,16 +269,16 @@ class ndarray_from_value(np.ndarray):
     #
     # def __init__(self, value: JuliaValGCv2) -> None:
     @staticmethod
-    def cast(value: JuliaValGCv2) -> np.ndarray:
+    def cast(value: JuliaValGC) -> np.ndarray:
         prod = lambda _: (lambda f: f(f, _))(lambda f, args: 1 if len(args) == 0 else (args[-1] * f(f, args[:-1])))
         #
         arr_ty = JuliaType.typeof(value)
         assert get_sym_name(arr_ty.name.name) == 'Array'
         #
-        arr_ty_param = JuliaValGCv2(get_svec_arr(arr_ty.parameters)[0])
+        arr_ty_param = JuliaValGC(get_svec_arr(arr_ty.parameters)[0])
         arr_ty_param_name = JuliaSymbol.cast(arr_ty_param.name.name)
         if arr_ty_param_name == 'Complex':
-            complex_ty_param = JuliaValGCv2(get_svec_arr(arr_ty_param.parameters)[0])
+            complex_ty_param = JuliaValGC(get_svec_arr(arr_ty_param.parameters)[0])
             complex_ty_param_name = JuliaSymbol.cast(complex_ty_param.name.name)
             arr_ty_param_name = 'ComplexF64' if complex_ty_param_name == 'Float64' else ('Complex32' if complex_ty_param_name == 'Float32' else None)
         assert arr_ty_param_name in ndarray_from_value._dtype_map.keys()
@@ -289,7 +289,7 @@ class ndarray_from_value(np.ndarray):
         ctypes_dtype, ctypes_factor = ndarray_from_value._ctypes_dtype_map[dtype]
         ctypes_dtype = np.ctypeslib.as_ctypes_type(np.dtype(ctypes_dtype))
         #
-        dims = JuliaInt.cast(JuliaValGCv2(get_svec_arr(arr_ty.parameters)[1]))
+        dims = JuliaInt.cast(JuliaValGC(get_svec_arr(arr_ty.parameters)[1]))
         shape = tuple(JuliaInt.cast(getindex(value.size, JuliaInt(i + 1))) for i in range(dims))
         size = prod(shape) * ctypes_factor
         #
@@ -461,28 +461,28 @@ class UnitarySmoothPulseProblem(QuantumControlProblem):
 
 
 
-def get_complexf64():
-    return get_global(JuliaValGC(jl.base_module()), 'ComplexF64')
+# def get_complexf64():
+#     return get_global(JuliaValGC(jl.base_module()), 'ComplexF64')
 
-def complexf64_to_ndarr(arr):
-    # prod = lambda f, args: 1 if len(args) == 0 else (args[-1] * f(f, args[:-1]))
-    prod = lambda _: (lambda f: f(f, _))(lambda f, args: 1 if len(args) == 0 else (args[-1] * f(f, args[:-1])))
+# def complexf64_to_ndarr(arr):
+#     # prod = lambda f, args: 1 if len(args) == 0 else (args[-1] * f(f, args[:-1]))
+#     prod = lambda _: (lambda f: f(f, _))(lambda f, args: 1 if len(args) == 0 else (args[-1] * f(f, args[:-1])))
 
-    shape = tuple(jl.unbox_int64(ptr(getindex(arr.size, JuliaValGC(jl.box_int64(i + 1))))) for i in range(2))
-    size = prod(shape)
+#     shape = tuple(jl.unbox_int64(ptr(getindex(arr.size, JuliaValGC(jl.box_int64(i + 1))))) for i in range(2))
+#     size = prod(shape)
 
-    arr = arr_to_ptr(jl, c_double, np.dtype('float64'), (*shape, 2), size * 2, arr)
-    arr = arr.reshape((size, 2)).astype('complex128')
-    arr = (arr[:, 0] + (arr[:, 1] * 1j)).reshape(shape[::-1]).transpose(tuple(range(len(shape)))[::-1])
-    return arr
+#     arr = arr_to_ptr(jl, c_double, np.dtype('float64'), (*shape, 2), size * 2, arr)
+#     arr = arr.reshape((size, 2)).astype('complex128')
+#     arr = (arr[:, 0] + (arr[:, 1] * 1j)).reshape(shape[::-1]).transpose(tuple(range(len(shape)))[::-1])
+#     return arr
 
-def ndarr_to_complexf64(ndarr, own=False):
-    return JuliaValGC(ptr_to_arr(jl, ptr(get_complexf64()), ndarr.shape[::-1], ndarr.ctypes.data, own=own))
+# def ndarr_to_complexf64(ndarr, own=False):
+#     return JuliaValGC(ptr_to_arr(jl, ptr(get_complexf64()), ndarr.shape[::-1], ndarr.ctypes.data, own=own))
 
-def ndarrs_to_mat_complexf64(ndarrs, own=False):
-    # assuming that each ndarr is such that len(ndarr.shape) == 2
-    mat_complexf64_arrty = JuliaValGC(jl.apply_array_type(ptr(get_complexf64()), 2))
-    return JuliaValGC(ptr_to_arr(jl, ptr(mat_complexf64_arrty), (len(ndarrs),), get_ctypes_arr(c_void_p, *[ptr(ndarr_to_complexf64(ndarr)) for ndarr in ndarrs]), own=own))
+# def ndarrs_to_mat_complexf64(ndarrs, own=False):
+#     # assuming that each ndarr is such that len(ndarr.shape) == 2
+#     mat_complexf64_arrty = JuliaValGC(jl.apply_array_type(ptr(get_complexf64()), 2))
+#     return JuliaValGC(ptr_to_arr(jl, ptr(mat_complexf64_arrty), (len(ndarrs),), get_ctypes_arr(c_void_p, *[ptr(ndarr_to_complexf64(ndarr)) for ndarr in ndarrs]), own=own))
 
 
 
@@ -496,135 +496,137 @@ def ndarrs_to_mat_complexf64(ndarrs, own=False):
 
 
 if __name__ == '__main__':
-    libdir = "/Users/gennadiryan/.julia/dev/jl2py/target/lib"
-    libname = "libjl2py.dylib"
-    libpath = os.path.join(libdir, libname)
+    # libdir = "/Users/gennadiryan/.julia/dev/jl2py/target/lib"
+    # libname = "libjl2py.dylib"
+    # libpath = os.path.join(libdir, libname)
 
-    libfuncs = dict(
-        jl_eval_string=((c_char_p,), c_void_p),
+    # libfuncs = dict(
+    #     jl_eval_string=((c_char_p,), c_void_p),
         
-        jl_call=((c_void_p, c_void_p, c_uint32,), c_void_p),
-        jl_call0=((c_void_p,) * 1, c_void_p),
-        jl_call1=((c_void_p,) * 2, c_void_p),
-        jl_call2=((c_void_p,) * 3, c_void_p),
-        jl_call3=((c_void_p,) * 4, c_void_p),
+    #     jl_call=((c_void_p, c_void_p, c_uint32,), c_void_p),
+    #     jl_call0=((c_void_p,) * 1, c_void_p),
+    #     jl_call1=((c_void_p,) * 2, c_void_p),
+    #     jl_call2=((c_void_p,) * 3, c_void_p),
+    #     jl_call3=((c_void_p,) * 4, c_void_p),
 
-        jl_symbol=((c_char_p,), c_void_p),
+    #     jl_symbol=((c_char_p,), c_void_p),
         
-        jl_typeof=((c_void_p,), c_void_p),
+    #     jl_typeof=((c_void_p,), c_void_p),
 
-        jl_field_index=((c_void_p, c_void_p, c_int,), c_int),
-        jl_get_field=((c_void_p, c_char_p,), c_void_p),
-        jl_get_nth_field=((c_void_p, c_size_t,), c_void_p),
-        jl_set_nth_field=((c_void_p, c_size_t, c_void_p,), None),
+    #     jl_field_index=((c_void_p, c_void_p, c_int,), c_int),
+    #     jl_get_field=((c_void_p, c_char_p,), c_void_p),
+    #     jl_get_nth_field=((c_void_p, c_size_t,), c_void_p),
+    #     jl_set_nth_field=((c_void_p, c_size_t, c_void_p,), None),
         
-        jl_box_bool=((ctypes.c_int8,), c_void_p),
-        jl_box_float64=((c_double,), c_void_p),
-        jl_box_int64=((c_int64,), c_void_p),
-        jl_box_voidpointer=((c_void_p,), c_void_p),
-        jl_unbox_bool=((ctypes.c_void_p,), ctypes.c_int8),
-        jl_unbox_float64=((c_void_p,), c_double),
-        jl_unbox_int64=((c_void_p,), c_int64),
-        jl_unbox_voidpointer=((c_void_p,), c_void_p),
-        jl_string_ptr=((c_void_p,), c_char_p),
+    #     jl_box_bool=((ctypes.c_int8,), c_void_p),
+    #     jl_box_float64=((c_double,), c_void_p),
+    #     jl_box_int64=((c_int64,), c_void_p),
+    #     jl_box_voidpointer=((c_void_p,), c_void_p),
+    #     jl_unbox_bool=((ctypes.c_void_p,), ctypes.c_int8),
+    #     jl_unbox_float64=((c_void_p,), c_double),
+    #     jl_unbox_int64=((c_void_p,), c_int64),
+    #     jl_unbox_voidpointer=((c_void_p,), c_void_p),
+    #     jl_string_ptr=((c_void_p,), c_char_p),
 
-        jl_egal=((c_void_p, c_void_p,), c_int),
+    #     jl_egal=((c_void_p, c_void_p,), c_int),
 
-        jl_gc_enable=((c_int,), c_int),
-        jl_gc_is_enabled=(None, c_int),
-        jl_gc_collect=((c_int,), None),
-        jl_gc_queue_root=((c_void_p,), None),
+    #     jl_gc_enable=((c_int,), c_int),
+    #     jl_gc_is_enabled=(None, c_int),
+    #     jl_gc_collect=((c_int,), None),
+    #     jl_gc_queue_root=((c_void_p,), None),
 
-        jl_get_binding_wr=((c_void_p, c_void_p, c_int,), c_void_p),
-        jl_get_global=((c_void_p, c_void_p,), c_void_p),
-        jl_checked_assignment=((c_void_p, c_void_p, c_void_p, c_void_p,), None),
+    #     jl_get_binding_wr=((c_void_p, c_void_p, c_int,), c_void_p),
+    #     jl_get_global=((c_void_p, c_void_p,), c_void_p),
+    #     jl_checked_assignment=((c_void_p, c_void_p, c_void_p, c_void_p,), None),
 
-        jl_apply_type=((c_void_p, c_void_p, c_size_t,), c_void_p),
-        jl_apply_type1=((c_void_p,) * 2, c_void_p),
-        jl_apply_type2=((c_void_p,) * 3, c_void_p),
-        jl_apply_type3=((c_void_p,) * 4, c_void_p),
+    #     jl_apply_type=((c_void_p, c_void_p, c_size_t,), c_void_p),
+    #     jl_apply_type1=((c_void_p,) * 2, c_void_p),
+    #     jl_apply_type2=((c_void_p,) * 3, c_void_p),
+    #     jl_apply_type3=((c_void_p,) * 4, c_void_p),
 
-        jl_apply_tuple_type_v=((c_void_p, c_size_t,), c_void_p),
-        jl_new_structv=((c_void_p, c_void_p, c_uint32,), c_void_p),
-        jl_apply_array_type=((c_void_p, c_size_t,), c_void_p),
-        jl_ptr_to_array=((c_void_p, c_void_p, c_void_p, c_int,), c_void_p),
+    #     jl_apply_tuple_type_v=((c_void_p, c_size_t,), c_void_p),
+    #     jl_new_structv=((c_void_p, c_void_p, c_uint32,), c_void_p),
+    #     jl_apply_array_type=((c_void_p, c_size_t,), c_void_p),
+    #     jl_ptr_to_array=((c_void_p, c_void_p, c_void_p, c_int,), c_void_p),
 
-        jl_exception_occurred=(None, c_void_p),
+    #     jl_exception_occurred=(None, c_void_p),
 
-        jl_printf=((c_void_p, c_char_p,), c_int),
-        jl_stderr_stream=(None, c_void_p),
-        jl_stderr_obj=(None, c_void_p),
+    #     jl_printf=((c_void_p, c_char_p,), c_int),
+    #     jl_stderr_stream=(None, c_void_p),
+    #     jl_stderr_obj=(None, c_void_p),
 
-        jl_get_current_task=(None, c_void_p),
+    #     jl_get_current_task=(None, c_void_p),
 
-        jl_get_pgcstack=(None, c_void_p),
-    )
-    libvars = dict(
-        jl_core_module=c_void_p,
-        jl_base_module=c_void_p,
-        jl_main_module=c_void_p,
-        jl_top_module=c_void_p,
+    #     jl_get_pgcstack=(None, c_void_p),
+    # )
+    # libvars = dict(
+    #     jl_core_module=c_void_p,
+    #     jl_base_module=c_void_p,
+    #     jl_main_module=c_void_p,
+    #     jl_top_module=c_void_p,
 
 
-        jl_any_type=c_void_p,
-        jl_type_type=c_void_p,
-        jl_typename_type=c_void_p,
-        jl_type_typename=c_void_p,
-        jl_symbol_type=c_void_p,
-        jl_simplevector_type=c_void_p,
-        jl_tuple_typename=c_void_p,
-        jl_anytuple_type=c_void_p,
-        jl_emptytuple_type=c_void_p,
-        jl_anytuple_type_type=c_void_p,
-        jl_function_type=c_void_p,
-        jl_module_type=c_void_p,
-        jl_densearray_type=c_void_p,
-        jl_array_type=c_void_p,
-        jl_array_typename=c_void_p,
-        jl_genericmemory_type=c_void_p,
-        jl_genericmemory_typename=c_void_p,
-        jl_genericmemoryref_type=c_void_p,
-        jl_genericmemoryref_typename=c_void_p,
-        jl_weakref_type=c_void_p,
-        jl_abstractstring_type=c_void_p,
-        jl_string_type=c_void_p,
+    #     jl_any_type=c_void_p,
+    #     jl_type_type=c_void_p,
+    #     jl_typename_type=c_void_p,
+    #     jl_type_typename=c_void_p,
+    #     jl_symbol_type=c_void_p,
+    #     jl_simplevector_type=c_void_p,
+    #     jl_tuple_typename=c_void_p,
+    #     jl_anytuple_type=c_void_p,
+    #     jl_emptytuple_type=c_void_p,
+    #     jl_anytuple_type_type=c_void_p,
+    #     jl_function_type=c_void_p,
+    #     jl_module_type=c_void_p,
+    #     jl_densearray_type=c_void_p,
+    #     jl_array_type=c_void_p,
+    #     jl_array_typename=c_void_p,
+    #     jl_genericmemory_type=c_void_p,
+    #     jl_genericmemory_typename=c_void_p,
+    #     jl_genericmemoryref_type=c_void_p,
+    #     jl_genericmemoryref_typename=c_void_p,
+    #     jl_weakref_type=c_void_p,
+    #     jl_abstractstring_type=c_void_p,
+    #     jl_string_type=c_void_p,
 
-        jl_bool_type=c_void_p,
-        jl_uint8_type=c_void_p,
-        jl_int64_type=c_void_p,
-        jl_float64_type=c_void_p,
-        jl_nothing_type=c_void_p,
-        jl_voidpointer_type=c_void_p,
-        jl_uint8pointer_type=c_void_p,
-        jl_pointer_type=c_void_p,
-        jl_ref_type=c_void_p,
-        jl_pointer_typename=c_void_p,
-        jl_namedtuple_type=c_void_p,
-        jl_namedtuple_typename=c_void_p,
+    #     jl_bool_type=c_void_p,
+    #     jl_uint8_type=c_void_p,
+    #     jl_int64_type=c_void_p,
+    #     jl_float64_type=c_void_p,
+    #     jl_nothing_type=c_void_p,
+    #     jl_voidpointer_type=c_void_p,
+    #     jl_uint8pointer_type=c_void_p,
+    #     jl_pointer_type=c_void_p,
+    #     jl_ref_type=c_void_p,
+    #     jl_pointer_typename=c_void_p,
+    #     jl_namedtuple_type=c_void_p,
+    #     jl_namedtuple_typename=c_void_p,
 
-        jl_empty_svec=c_void_p,
-        jl_emptytuple=c_void_p,
-        jl_true=c_void_p,
-        jl_false=c_void_p,
-        jl_nothing=c_void_p,
-        jl_kwcall_func=c_void_p,
+    #     jl_empty_svec=c_void_p,
+    #     jl_emptytuple=c_void_p,
+    #     jl_true=c_void_p,
+    #     jl_false=c_void_p,
+    #     jl_nothing=c_void_p,
+    #     jl_kwcall_func=c_void_p,
         
-        # jl_libdl_dlopen_func=c_void_p,
-    )
+    #     # jl_libdl_dlopen_func=c_void_p,
+    # )
 
-    lib = JuliaLib(libpath).__enter__()
-    libutils = CDLLUtils(lib, funcs=libfuncs, vars=libvars)
+    # lib = JuliaLib(libpath).__enter__()
+    # libutils = CDLLUtils(lib, funcs=libfuncs, vars=libvars)
 
-    jl = as_object('jl_', **(libutils.funcs), **(libutils.vars))
-    init_JuliaValGC(jl)
+    # jl = as_object('jl_', **(libutils.funcs), **(libutils.vars))
+    # init_JuliaValGC(jl)
+
+    jl = init_jl()
     
 
     # predefined values
     
-    println = JuliaValGCv2(jl.eval_string(b'println'))
-    getindex = get_global(JuliaValGCv2(jl.base_module()), 'getindex')
+    println = JuliaValGC(jl.eval_string(b'println'))
+    getindex = get_global(JuliaValGC(jl.base_module()), 'getindex')
     
-    mod_main = JuliaValGCv2(jl.main_module())
+    mod_main = JuliaValGC(jl.main_module())
     mod_jl2py = get_global(mod_main, 'jl2py')
     mod_qc = get_global(mod_jl2py, 'QuantumCollocation')
 
