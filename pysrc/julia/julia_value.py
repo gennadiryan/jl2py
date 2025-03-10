@@ -110,11 +110,18 @@ class JuliaVal:
         # TODO(jack-champagne): add kwargs call here
         res = fns.call(val, argsptr, nargs) # TODO: handle bad return values (i.e. `res is None` yet no exception thrown)
 
+        # TODO: replace this block with proper error handling (subsequent block appears not to be working; may need to hold on to show_error pointer ahead of time)
+        if res is None:
+            raise ValueError()
+
         # see github.com/JuliaLang/julia/test/embedding/embedding.c
         eo = fns.exception_occurred()
         if eo is not None:
             fns.call2(fns.get_global(fns.base_module(), 'showerror'.encode()), fns.stderr_obj(), eo)
             fns.printf(fns.stderr_stream(), '\n'.encode())
+            return None
+
+        if res is None:
             return None
 
         return _getattr(self, '_convert_from')(res)
@@ -269,13 +276,13 @@ def get_nt(fns, names, vals, tys):
     return nt
 
 
-def call_with_kwargs(fns, fn, args, names, vals, tys):
-    l = len(args)
+# def call_with_kwargs(fns, fn, args, names, vals, tys):
+#     l = len(args)
 
-    nt = get_nt(fns, names, vals, tys)
-    carr_args = get_ctypes_arr(c_void_p, *(nt, fn, *args))
+#     nt = get_nt(fns, names, vals, tys) # this should probably be stored in refs until jl_call() has returned
+#     carr_args = get_ctypes_arr(c_void_p, *(nt, fn, *args))
 
-    return fns.call(fns.kwcall_func(), carr_args, l + 2)
+#     return fns.call(fns.kwcall_func(), carr_args, l + 2)
 
 
 
