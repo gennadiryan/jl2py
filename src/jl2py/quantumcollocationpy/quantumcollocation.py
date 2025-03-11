@@ -3,7 +3,14 @@ import numpy as np
 from ..julia.julia_value import init_jl, ptr_to_arr, arr_to_ptr, get_ctypes_arr, get_nt, JuliaVal, JuliaValGC
 from ..julia.julia_extras import ptr, get_global, call_with_kwargs, JuliaType, JuliaNum, JuliaInt, JuliaFloat, JuliaComplex, JuliaSymbol, JuliaVec, JuliaArr, ndarray_from_value, println, getindex
 
-from . import mod_qc
+from . import mod_qc, jl
+
+def traj_to_mat(traj):
+    dim_cols, dim_rows = tuple(jl.unbox_int64(ptr(_)) for _ in (traj.dim, traj.T))
+    data_vec = ndarray_from_value(traj.datavec)
+    data_mat = data_vec.reshape((dim_rows, dim_cols)).transpose()
+    return data_mat
+
 
 class QuantumSystem:
     def __init__(

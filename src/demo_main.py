@@ -147,12 +147,6 @@ if __name__ == '__main__':
 
     # Remember to ask about "libc++abi: terminating due to uncaught exception of type Ipopt::RESTORATION_MAXITER_EXCEEDED"
 
-    def traj_to_mat(traj):
-        dim_cols, dim_rows = tuple(jl.unbox_int64(ptr(_)) for _ in (traj.dim, traj.T))
-        data_vec = ndarray_from_value(traj.datavec)
-        data_mat = data_vec.reshape((dim_rows, dim_cols)).transpose()
-        return data_mat
-
 
     paulis = dump_paulis(copy=True)
     gates = dump_gates(copy=True)
