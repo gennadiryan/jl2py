@@ -3,15 +3,12 @@ from ..julia.julia_extras import ptr, get_global, call_with_kwargs, JuliaType, J
 
 from ..julia.lib_julia import init_jl
 
-__all__ = ["problemtemplates"]  
-
-from . import problemtemplates
+jl = init_jl()
+mod_main = JuliaValGC(jl.main_module())
+mod_jl2py = get_global(mod_main, 'jl2py')
+mod_qc = get_global(mod_jl2py, 'QuantumCollocation')
 
 def dump_paulis(copy=True):
-    jl = init_jl()
-    mod_main = JuliaValGC(jl.main_module())
-    mod_jl2py = get_global(mod_main, 'jl2py')
-    mod_qc = get_global(mod_jl2py, 'QuantumCollocation')
     paulis = get_global(mod_qc, 'PAULIS')
     ks = 'I X Y Z'.split(' ')
     arrs = [ndarray_from_value.cast(getindex(paulis, JuliaSymbol(k))) for k in ks]
@@ -20,10 +17,6 @@ def dump_paulis(copy=True):
     return dict(zip(ks, arrs))
 
 def dump_gates(copy=True):
-    jl = init_jl()
-    mod_main = JuliaValGC(jl.main_module())
-    mod_jl2py = get_global(mod_main, 'jl2py')
-    mod_qc = get_global(mod_jl2py, 'QuantumCollocation')
     gates = get_global(mod_qc, 'GATES')
     ks = 'sqrtiSWAP CX CZ H X XI Y Z I'.split(' ')
     arrs = [ndarray_from_value.cast(getindex(gates, JuliaSymbol(k))) for k in ks]
@@ -33,4 +26,6 @@ def dump_gates(copy=True):
 
 PAULIS = dump_paulis()
 GATES = dump_gates()
+
+
 

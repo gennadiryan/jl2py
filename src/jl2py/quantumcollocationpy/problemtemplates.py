@@ -3,6 +3,8 @@ from .quantumcollocation import QuantumSystem, QuantumControlProblem
 from ..julia.julia_value import init_jl, ptr_to_arr, arr_to_ptr, get_ctypes_arr, get_nt, JuliaVal, JuliaValGC
 from ..julia.julia_extras import ptr, get_global, call_with_kwargs, JuliaType, JuliaNum, JuliaInt, JuliaFloat, JuliaComplex, JuliaSymbol, JuliaVec, JuliaArr, ndarray_from_value, println, getindex
 
+from . import mod_qc
+
 import numpy as np
 
 class QuantumStateSmoothPulseProblem(QuantumControlProblem):
