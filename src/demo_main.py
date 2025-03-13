@@ -6,12 +6,12 @@ from ctypes import cdll, c_double, c_float, c_int, c_int32, c_int64, c_uint, c_u
 import numpy as np
 
 # from experimental.main import JuliaLib, CDLLUtils, JuliaVal, JuliaValGC, as_object, ptr_to_arr, arr_to_ptr, get_ctypes_arr, init_JuliaVal, init_JuliaValGC, add_ref, del_ref
-from jl2py.julia.julia_value import init_jl, ptr_to_arr, arr_to_ptr, get_ctypes_arr, get_nt, JuliaVal, JuliaValGC
-from jl2py.julia.julia_extras import ptr, get_global, call_with_kwargs, JuliaType, JuliaNum, JuliaInt, JuliaFloat, JuliaComplex, JuliaSymbol, JuliaVec, JuliaArr, ndarray_from_value, println, getindex
+from pypiccolo.julia.julia_value import init_jl, ptr_to_arr, arr_to_ptr, get_ctypes_arr, get_nt, JuliaVal, JuliaValGC
+from pypiccolo.julia.julia_extras import ptr, get_global, call_with_kwargs, JuliaType, JuliaNum, JuliaInt, JuliaFloat, JuliaComplex, JuliaSymbol, JuliaVec, JuliaArr, ndarray_from_value, println, getindex
 
-from jl2py.quantumcollocationpy import *
-from jl2py.quantumcollocationpy.quantumcollocation import QuantumSystem
-from jl2py.quantumcollocationpy.problemtemplates import QuantumStateSmoothPulseProblem, UnitarySmoothPulseProblem, UnitaryMinimumTimeProblem
+from pypiccolo.quantumcollocationpy import *
+from pypiccolo.quantumcollocationpy.quantumcollocation import QuantumSystem
+from pypiccolo.quantumcollocationpy.problemtemplates import QuantumStateSmoothPulseProblem, UnitarySmoothPulseProblem, UnitaryMinimumTimeProblem
 
 
 """
