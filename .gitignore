@@ -10,7 +10,7 @@ main.o
 /env/
 /.venv/
 /**/__pycache__/
-dist
+/dist/
 
 # IDE
 *.code-workspace
