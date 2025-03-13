@@ -4,9 +4,14 @@ from .utils import _getattr, _setattr
 
 
 class _CdllLib:
+    # TODO: Improve error handling on failure to load library
     def __init__(self, libpath):
-        self.lib = ctypes.cdll.LoadLibrary(libpath)
-        self.lib_needs_shutdown = False
+        try:
+            self.lib = ctypes.cdll.LoadLibrary(libpath)
+        except OSError as e:
+            raise e
+        finally:
+            self.lib_needs_shutdown = False
 
     def init_lib(self, funcs=None, vars=None):
         self.lib.init_julia(0, None)
@@ -20,6 +25,7 @@ class _CdllLib:
     def shutdown_lib(self):
         if self.lib_needs_shutdown:
             self.lib.shutdown_julia(0)
+            # print('Shutdown julia')
 
     def register_funcs(self, funcs):
         return dict([(name, func) for name, func in ([(name, self.register_func(name, argtypes=argtypes, restype=restype)) for name, (argtypes, restype) in funcs.items()] if funcs is not None else []) if func is not None])
