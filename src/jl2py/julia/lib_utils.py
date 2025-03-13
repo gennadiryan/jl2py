@@ -47,7 +47,7 @@ class _CdllLib:
     
     def __del__(self):
         self.shutdown_lib()
-        print('Bye!')
+        # print('Bye!')
     
 
 class CdllLib(object):
