@@ -48,8 +48,16 @@ DYLD_FALLBACK_LIBRARY_PATH=./target/lib:./target/lib/julia python3 ./main.py
 
 #### Demos
 
-```
+<!-- ```
 DYLD_FALLBACK_LIBRARY_PATH=jl2py/target/lib:jl2py/target/lib/julia python3 -m jl2py.demo.quantum_collocation_demo
+``` -->
+
+```
+PYTHOH_PATH=/Users/gennadiryan/Documents/kestrel/jl2py/src DYLD_FALLBACK_LIBRARY_PATH=/Users/gennadiryan/.julia/dev/jl2py/target/lib:/Users/gennadiryan/.julia/dev/jl2py/target/lib/julia JULIA_LIBRARY_PATH=/Users/gennadiryan/.julia/dev/jl2py/target/lib python -i src/demo_main.py
+```
+
+```
+PYTHONPATH=/Users/gennadiryan/Documents/kestrel/jl2py/src DYLD_FALLBACK_LIBRARY_PATH=/Users/gennadiryan/.julia/dev/jl2py/target/lib:/Users/gennadiryan/.julia/dev/jl2py/target/lib/julia JULIA_LIBRARY_PATH=/Users/gennadiryan/.julia/dev/jl2py/target/lib python -i tests/test.py
 ```
 
 #### TODOs
