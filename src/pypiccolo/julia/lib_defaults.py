@@ -3,10 +3,9 @@ import os
 
 from ctypes import *
 
-
-rootdir = os.path.abspath(os.path.join(os.path.dirname(__file__), *([os.path.pardir] * 2)))
-
-libdir = os.path.join(rootdir, 'target', 'lib') if 'JULIA_LIBRARY_PATH' not in os.environ.keys() else os.environ['JULIA_LIBRARY_PATH']
+module_dir = os.path.dirname(__file__)
+# up one because we are inside julia module namespace
+libdir = os.path.join(module_dir, '..', 'target', 'lib') if 'JULIA_LIBRARY_PATH' not in os.environ.keys() else os.environ['JULIA_LIBRARY_PATH']
 libname = 'jl2py' if 'JULIA_LIBRARY_NAME' not in os.environ.keys() else os.environ['JULIA_LIBRARY_NAME']
 libext = 'dylib' if sys.platform == 'darwin' else 'so'
 libfile = (os.path.extsep).join(('lib{}'.format(libname), libext))

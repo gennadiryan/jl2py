@@ -19,9 +19,12 @@ class init_jl:
 
     def __new__(cls, libpath=default_libpath):
         if cls.jl is None:
-            lib = _CdllLib(libpath)
-            lib.init_lib(funcs=libfuncs, vars=libvars)
+            try:
+                lib = _CdllLib(libpath)
+                lib.init_lib(funcs=libfuncs, vars=libvars)
 
-            cls.jl = CdllLib(lib, prefix='jl_')
+                cls.jl = CdllLib(lib, prefix='jl_')
+            except OSError as e:
+                raise e
         
         return cls.jl

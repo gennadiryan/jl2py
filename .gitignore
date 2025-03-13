@@ -8,7 +8,9 @@ main.o
 
 # Python
 /env/
+/.venv/
 /**/__pycache__/
+/dist/
 
 # IDE
 *.code-workspace
