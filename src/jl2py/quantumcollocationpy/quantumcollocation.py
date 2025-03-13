@@ -7,7 +7,7 @@ from . import mod_qc, jl
 
 def traj_to_mat(traj):
     dim_cols, dim_rows = tuple(jl.unbox_int64(ptr(_)) for _ in (traj.dim, traj.T))
-    data_vec = ndarray_from_value(traj.datavec)
+    data_vec = ndarray_from_value.cast(traj.datavec)
     data_mat = data_vec.reshape((dim_rows, dim_cols)).transpose()
     return data_mat
 
@@ -75,9 +75,9 @@ class QuantumControlProblem:
 def unitary_fidelity(problem: QuantumControlProblem) -> float:
     return JuliaFloat.cast(get_global(mod_qc, 'unitary_fidelity')(problem.value))
 
-def plot_unitary_populations(problem: QuantumControlProblem):
+def plot_unitary_populations(problem: QuantumControlProblem, display_plot: bool = False):
     plot = get_global(mod_qc, 'plot_unitary_populations')(problem.value.trajectory)
-    if show_plot == True:
+    if display_plot == True:
         display = get_global(mod_qc, 'display')(plot)
     return plot
 
