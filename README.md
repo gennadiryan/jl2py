@@ -16,9 +16,11 @@ gcc -L./target/lib -L./target/lib/julia -ljl2py -o ./main ./main.o
 #   Second include path is a result of the Julia "joinpath(Sys.BINDIR, Base.INCLUDEDIR, "julia")"
 gcc -I./target/include -I/Users/gennadiryan/.julia/juliaup/julia-1.11.2+0.aarch64.apple.darwin14/bin/../include/julia -c -o ./main.o ./main.c
 
-# On linux, to configure dynamic linker bindings, you must add the shared library to the LD_LIBRARY_PATH env variable like so
-# (LINUX SPECIFIC)
+# On Linux, to configure dynamic linker bindings, you must add the shared library to the LD_LIBRARY_PATH env variable like so:
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./target/lib
+
+# On Mac, to configure dynamic linker bindings, you must specify the shared library fallback path to the DYLD_FALLBACK_LIBRARY_PATH env variable like so:
+export DYLD_FALLBACK_LIBRARY_PATH=$DYLD_FALLBACK_LIBRARY_PATH:./target/lib:./target/lib/julia
 
 # compile into target (all platforms)
 gcc -L./target/lib -L./target/lib/julia -ljulia -ljl2py -o ./main ./main.o
@@ -62,7 +64,8 @@ PYTHONPATH=/Users/gennadiryan/Documents/kestrel/jl2py/src DYLD_FALLBACK_LIBRARY_
 
 #### TODOs
 
-- Consider whether Cython is preferable to ctypes
+- Incorporate GC stack into pypiccolo/jl2py implementation
+- Consider whether Cython is preferable to ctypes (probably not necessary)
 
 ##### Comments
 
