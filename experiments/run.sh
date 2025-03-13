@@ -1,0 +1,1 @@
+gcc -I${JULIA_BINDIR}/../include/julia -c -o ${1}.o ${1}.c && gcc -L${JULIA_BINDIR}/../lib -L${JULIA_BINDIR}/../lib/julia -ljulia -o ${1} ${1}.o && DYLD_FALLBACK_LIBRARY_PATH=${JULIA_BINDIR}/../lib:${JULIA_BINDIR}/../lib/julia ${1}
