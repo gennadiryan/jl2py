@@ -8,14 +8,14 @@ from pypiccolo import PAULIS
 from pypiccolo import GATES
 from pypiccolo.problemtemplates import QuantumStateSmoothPulseProblem, UnitarySmoothPulseProblem, UnitaryMinimumTimeProblem
 from pypiccolo.quantumcollocation import QuantumSystem
-from pypiccolo.quantumcollocation import unitary_fidelity, plot_unitary_populations, traj_to_mat
+from pypiccolo.quantumcollocation import unitary_rollout_fidelity, plot_unitary_populations, traj_to_mat
 
 system = QuantumSystem(h_drives=[PAULIS['X'], PAULIS['Y']])
 problem = UnitarySmoothPulseProblem(system, GATES['H'], 50, 0.2)
 
-fidelity_initial = unitary_fidelity(problem)
+fidelity_initial = unitary_rollout_fidelity(problem, system)
 problem.solve(50)
-fidelity_final = unitary_fidelity(problem)
+fidelity_final = unitary_rollout_fidelity(problem, system)
 
 assert fidelity_final > fidelity_initial
 print(f'unitary_fidelity=(before={fidelity_initial},after={fidelity_final})')
