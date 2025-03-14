@@ -1,5 +1,5 @@
 [project]
-name = "jl2py"
+name = "pypiccolo"
 version = "0.1.0"
 description = "Python Instrumentation for the Julia runtime"
 authors = [
