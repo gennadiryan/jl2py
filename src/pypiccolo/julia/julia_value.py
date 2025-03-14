@@ -7,6 +7,7 @@ import os
 import ctypes
 from ctypes import cdll, c_double, c_float, c_int, c_int32, c_int64, c_uint, c_uint32, c_uint64, c_size_t, c_char_p, c_void_p
 
+from . import jl
 from .lib_julia import init_jl
 from .utils import _getattr, _setattr
 
@@ -110,19 +111,29 @@ class JuliaVal:
         # TODO(jack-champagne): add kwargs call here
         res = fns.call(val, argsptr, nargs) # TODO: handle bad return values (i.e. `res is None` yet no exception thrown)
 
-        # TODO: replace this block with proper error handling (subsequent block appears not to be working; may need to hold on to show_error pointer ahead of time)
-        if res is None:
-            raise ValueError()
+        # # TODO: replace this block with proper error handling (subsequent block appears not to be working; may need to hold on to show_error pointer ahead of time)
+        # if res is None:
+        #     raise ValueError()
 
-        # see github.com/JuliaLang/julia/test/embedding/embedding.c
+        # # see github.com/JuliaLang/julia/test/embedding/embedding.c
+        # eo = fns.exception_occurred()
+        # if eo is not None:
+        #     fns.call2(fns.get_global(fns.base_module(), 'showerror'.encode()), fns.stderr_obj(), eo)
+        #     fns.printf(fns.stderr_stream(), '\n'.encode())
+        #     return None
+
+        # if res is None:
+        #     return None
+
         eo = fns.exception_occurred()
         if eo is not None:
-            fns.call2(fns.get_global(fns.base_module(), 'showerror'.encode()), fns.stderr_obj(), eo)
-            fns.printf(fns.stderr_stream(), '\n'.encode())
-            return None
-
+            # fns.call2(fns.get_global(fns.base_module(), fns.symbol(b'showerror')), fns.get_global(fns.base_module(), fns.symbol(b'stderr')), eo)
+            fns.call2(fns.get_global(fns.base_module(), fns.symbol(b'showerror')), fns.stderr_obj(), eo)
+            fns.printf(fns.stderr_stream(), b'\n')
+            raise Exception()
+        
         if res is None:
-            return None
+            raise Exception() # should not fall through to here
 
         return _getattr(self, '_convert_from')(res)
 
@@ -173,47 +184,117 @@ class JuliaVal:
 #   // ??
 #   """
 
-def get_ref_any_type(fns):
-    return fns.apply_type1(fns.get_global(fns.base_module(), fns.symbol(b'RefValue')), fns.any_type())
+# def get_ref_any_type(fns):
+#     return fns.apply_type1(fns.get_global(fns.base_module(), fns.symbol(b'RefValue')), fns.any_type())
 
 
-def init_refs(fns):
-    # gc = fns.gc_enable(0)
+# def init_refs(fns):
+#     # gc = fns.gc_enable(0)
 
-    val = fns.call0(fns.apply_type2(fns.get_global(fns.base_module(), fns.symbol(b'IdDict')), fns.any_type(), get_ref_any_type(fns)))
+#     val = fns.call0(fns.apply_type2(fns.get_global(fns.base_module(), fns.symbol(b'IdDict')), fns.any_type(), get_ref_any_type(fns)))
 
-    var = fns.symbol(b'refs')
-    bp = fns.get_binding_wr(fns.main_module(), var, 1)
-    fns.checked_assignment(bp, fns.main_module(), var, val)
+#     var = fns.symbol(b'refs')
+#     bp = fns.get_binding_wr(fns.main_module(), var, 1)
+#     fns.checked_assignment(bp, fns.main_module(), var, val)
 
-    # fns.gc_enable(gc)
-
-
-def add_ref(fns, val):
-    # gc = fns.gc_enable(0)
-
-    setindex = fns.get_global(fns.base_module(), fns.symbol(b'setindex!'))
-    # res = fns.call3(setindex, fns.get_global(fns.main_module(), fns.symbol(b'refs')), fns.call1(get_ref_any_type(fns), val), val)
-    # ref = fns.call1(get_ref_any_type(fns), val)
-    ref = fns.new_structv(get_ref_any_type(fns), get_ctypes_arr(c_void_p, val), 1)
-    res = fns.call3(setindex, fns.get_global(fns.main_module(), fns.symbol(b'refs')), ref, ref)
-
-    # fns.gc_enable(gc)
-
-    if res is None:
-        raise ValueError()
-    return ref
+#     # fns.gc_enable(gc)
 
 
-def del_ref(fns, val):
-    # gc = fns.gc_enable(0)
+# def add_ref(fns, val):
+#     # gc = fns.gc_enable(0)
 
-    delete = fns.get_global(fns.base_module(), fns.symbol(b'delete!'))
-    res = fns.call2(delete, fns.get_global(fns.main_module(), fns.symbol(b'refs')), val)
+#     setindex = fns.get_global(fns.base_module(), fns.symbol(b'setindex!'))
+#     # res = fns.call3(setindex, fns.get_global(fns.main_module(), fns.symbol(b'refs')), fns.call1(get_ref_any_type(fns), val), val)
+#     # ref = fns.call1(get_ref_any_type(fns), val)
+#     ref = fns.new_structv(get_ref_any_type(fns), get_ctypes_arr(c_void_p, val), 1)
+#     res = fns.call3(setindex, fns.get_global(fns.main_module(), fns.symbol(b'refs')), ref, ref)
 
-    # fns.gc_enable(gc)
+#     # fns.gc_enable(gc)
 
-    if res is None:
+#     if res is None:
+#         raise ValueError()
+#     return ref
+
+
+# def del_ref(fns, val):
+#     # gc = fns.gc_enable(0)
+
+#     delete = fns.get_global(fns.base_module(), fns.symbol(b'delete!'))
+#     res = fns.call2(delete, fns.get_global(fns.main_module(), fns.symbol(b'refs')), val)
+
+#     # fns.gc_enable(gc)
+
+#     if res is None:
+#         raise ValueError()
+
+
+
+def jl_gc_pushargs(n):
+    pgcstack_ptr_addr = jl.get_pgcstack()
+    new_pgcstack = (c_void_p * (2 + n))(n << 2, c_void_p.from_address(pgcstack_ptr_addr), *([0] * n))
+    new_pgcstack_addr_ptr = c_void_p(ctypes.addressof(new_pgcstack))
+    new_pgcstack_addr_ptr_addr = ctypes.addressof(new_pgcstack_addr_ptr)
+    ctypes.memmove(pgcstack_ptr_addr, new_pgcstack_addr_ptr_addr, ctypes.sizeof(c_void_p))
+    return new_pgcstack
+
+def jl_gc_pop():
+    pgcstack_ptr_addr = jl.get_pgcstack()
+    pgcstack_addr = c_void_p.from_address(pgcstack_ptr_addr).value
+    pgcstack_addr = 0 if pgcstack_addr is None else pgcstack_addr
+    if pgcstack_addr > 0:
+        old_pgcstack_addr_ptr = c_void_p.from_address(pgcstack_addr + (1 * ctypes.sizeof(c_void_p)))
+        ctypes.memmove(pgcstack_ptr_addr, ctypes.addressof(old_pgcstack_addr_ptr), ctypes.sizeof(c_void_p))
+
+
+def init_refs():
+    try:
+        gcstack = jl_gc_pushargs(3)
+
+        reft = jl.get_global(jl.base_module(), jl.symbol(b'RefValue'))
+        reft = jl.apply_type1(reft, jl.any_type())
+        gcstack[2] = reft
+
+        idsett = jl.get_global(jl.base_module(), jl.symbol(b'IdSet'))
+        idsett = jl.apply_type1(idsett, reft)
+        gcstack[3] = idsett
+        
+        refs = jl.call0(idsett)
+        gcstack[4] = refs
+
+        var = jl.symbol(b'refs')
+        bp = jl.get_binding_wr(jl.main_module(), var, 1)
+        jl.checked_assignment(bp, jl.main_module(), var, refs)
+
+    finally:
+        jl_gc_pop()
+
+
+def add_ref(value):
+    try:
+        gcstack = jl_gc_pushargs(3)
+
+        gcstack[2] = value
+
+        reft = jl.get_global(jl.base_module(), jl.symbol(b'RefValue'))
+        reft = jl.apply_type1(reft, jl.any_type())
+        gcstack[3] = reft
+
+        carr_args = (c_void_p * 1)(value)
+        ref = jl.new_structv(reft, carr_args, 1)
+        gcstack[4] = ref
+        
+        res = jl.call2(jl.get_global(jl.base_module(), jl.symbol(b'push!')), jl.get_global(jl.main_module(), jl.symbol(b'refs')), ref)
+
+        return ref
+
+    finally:
+        jl_gc_pop()
+
+
+def del_ref(ref):
+    res = jl.call2(jl.get_global(jl.base_module(), jl.symbol(b'pop!')), jl.get_global(jl.main_module(), jl.symbol(b'refs')), ref)
+    
+    if res != ref:
         raise ValueError()
 
 
@@ -295,13 +376,13 @@ class JuliaValGC(JuliaVal):
         _setattr(self, '_convert_to', lambda _: _getattr(_, 'val') if isinstance(_, JuliaVal) else _)
         _setattr(self, '_convert_from', lambda _: JuliaValGC(_))
 
-        _setattr(self, 'ref', add_ref(fns, val))
+        _setattr(self, 'ref', add_ref(val))
     
     def __del__(self):
         fns = _getattr(self, 'fns')
         ref = _getattr(self, 'ref')
 
-        del_ref(fns, ref)
+        del_ref(ref)
 
 
 # class JuliaValGCv2(JuliaVal):
@@ -345,7 +426,7 @@ def get_ctypes_arr(ty, *args):
     return (ty * len(args))(*args)
 
 
-init_refs(JuliaValGC.fns)
+init_refs()
 
 
 if __name__ == '__main__':
