@@ -6,7 +6,8 @@
 
 ```
 # Build ./target/{include,lib,share}
-julia ./build/build.jl
+cd scripts
+julia --project build.jl
 
 # Build main
 gcc -I./target/include -c -o ./main.o ./main.c
