@@ -1,9 +1,9 @@
 from .quantumcollocation import QuantumSystem, QuantumControlProblem
 
-from ..julia.julia_value import init_jl, ptr_to_arr, arr_to_ptr, get_ctypes_arr, get_nt, JuliaVal, JuliaValGC
-from ..julia.julia_extras import ptr, get_global, call_with_kwargs, JuliaType, JuliaNum, JuliaInt, JuliaFloat, JuliaComplex, JuliaSymbol, JuliaVec, JuliaArr, ndarray_from_value, println, getindex
+from .julia.julia_value import init_jl, ptr_to_arr, arr_to_ptr, get_ctypes_arr, get_nt, JuliaVal, JuliaValGC
+from .julia.julia_extras import ptr, get_global, call_with_kwargs, JuliaType, JuliaNum, JuliaInt, JuliaFloat, JuliaComplex, JuliaSymbol, JuliaVec, JuliaArr, ndarray_from_value, println, getindex
 
-from . import mod_qc
+from . import mod_piccolo
 
 import numpy as np
 
@@ -38,7 +38,7 @@ class QuantumStateSmoothPulseProblem(QuantumControlProblem):
         if len(kwargs) > 0:
             raise NotImplementedError()
         
-        self.value = get_global(mod_qc, 'QuantumStateSmoothPulseProblem')(self.system.value, self.states_init, self.states_goal, self.T, self.dt)
+        self.value = get_global(mod_piccolo, 'QuantumStateSmoothPulseProblem')(self.system.value, self.states_init, self.states_goal, self.T, self.dt)
 
 class UnitarySmoothPulseProblem(QuantumControlProblem):
     def __init__(
@@ -68,7 +68,7 @@ class UnitarySmoothPulseProblem(QuantumControlProblem):
         if len(kwargs) > 0:
             raise NotImplementedError()
         
-        self.value = get_global(mod_qc, 'UnitarySmoothPulseProblem')(self.system.value, self.operator, JuliaInt(T), JuliaFloat(dt))
+        self.value = get_global(mod_piccolo, 'UnitarySmoothPulseProblem')(self.system.value, self.operator, JuliaInt(T), JuliaFloat(dt))
 
 
 class UnitaryMinimumTimeProblem(QuantumControlProblem):
@@ -83,13 +83,13 @@ class UnitaryMinimumTimeProblem(QuantumControlProblem):
         self.prob = prob
         self.system = system
 
-        fn = get_global(mod_qc, 'UnitaryMinimumTimeProblem')
+        fn = get_global(mod_piccolo, 'UnitaryMinimumTimeProblem')
         args = [self.prob.value]
         names = ['final_fidelity'] if final_fidelity is not None else list()
         vals = [JuliaFloat(final_fidelity)] if final_fidelity is not None else list()
 
         self.value = call_with_kwargs(fn, args, names, vals)
 
-        # self.value = get_global(mod_qc, 'UnitaryMinimumTimeProblem')(self.prob.value, self.system.value)
+        # self.value = get_global(mod_piccolo, 'UnitaryMinimumTimeProblem')(self.prob.value, self.system.value)
         
 

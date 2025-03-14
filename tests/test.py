@@ -4,11 +4,11 @@
 
 import numpy as np
 
-from pypiccolo.quantumcollocationpy import PAULIS
-from pypiccolo.quantumcollocationpy import GATES
-from pypiccolo.quantumcollocationpy.problemtemplates import QuantumStateSmoothPulseProblem, UnitarySmoothPulseProblem, UnitaryMinimumTimeProblem
-from pypiccolo.quantumcollocationpy.quantumcollocation import QuantumSystem
-from pypiccolo.quantumcollocationpy.quantumcollocation import unitary_fidelity, plot_unitary_populations, traj_to_mat
+from pypiccolo import PAULIS
+from pypiccolo import GATES
+from pypiccolo.problemtemplates import QuantumStateSmoothPulseProblem, UnitarySmoothPulseProblem, UnitaryMinimumTimeProblem
+from pypiccolo.quantumcollocation import QuantumSystem
+from pypiccolo.quantumcollocation import unitary_fidelity, plot_unitary_populations, traj_to_mat
 
 system = QuantumSystem(h_drives=[PAULIS['X'], PAULIS['Y']])
 problem = UnitarySmoothPulseProblem(system, GATES['H'], 50, 0.2)

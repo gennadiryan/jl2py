@@ -1,9 +1,9 @@
 import numpy as np
 
-from ..julia.julia_value import init_jl, ptr_to_arr, arr_to_ptr, get_ctypes_arr, get_nt, JuliaVal, JuliaValGC
-from ..julia.julia_extras import ptr, get_global, call_with_kwargs, JuliaType, JuliaNum, JuliaInt, JuliaFloat, JuliaComplex, JuliaSymbol, JuliaVec, JuliaArr, ndarray_from_value, println, getindex
+from .julia.julia_value import init_jl, ptr_to_arr, arr_to_ptr, get_ctypes_arr, get_nt, JuliaVal, JuliaValGC
+from .julia.julia_extras import ptr, get_global, call_with_kwargs, JuliaType, JuliaNum, JuliaInt, JuliaFloat, JuliaComplex, JuliaSymbol, JuliaVec, JuliaArr, ndarray_from_value, println, getindex
 
-from . import mod_qc, jl
+from . import mod_piccolo, jl
 
 def traj_to_mat(traj):
     dim_cols, dim_rows = tuple(jl.unbox_int64(ptr(_)) for _ in (traj.dim, traj.T))
@@ -37,7 +37,7 @@ class QuantumSystem:
         self.kwargs = dict([_ for _ in kwargs.items()]) # noop for the time being
         #
         # self.value = fn_qs(*self.args)
-        self.value = get_global(mod_qc, 'QuantumSystem')(*self.args)
+        self.value = get_global(mod_piccolo, 'QuantumSystem')(*self.args)
 
 
 class QuantumControlProblem:
@@ -49,7 +49,7 @@ class QuantumControlProblem:
         #     self.value.ipopt_options.max_iter = JuliaInt(max_iter)
 
         if max_iter is not None:
-            fn = get_global(mod_qc, 'solve!')
+            fn = get_global(mod_piccolo, 'solve!')
             args = [self.value,]
             names = ['max_iter']
             vals = [JuliaInt(max_iter)]
@@ -70,16 +70,16 @@ class QuantumControlProblem:
 
             # return JuliaValGC(call_with_kwargs(jl, fn, args, names, vals, tys))
         
-        get_global(mod_qc, 'solve!')(self.value)
+        get_global(mod_piccolo, 'solve!')(self.value)
 
-def unitary_fidelity(problem: QuantumControlProblem) -> float:
-    return JuliaFloat.cast(get_global(mod_qc, 'unitary_fidelity')(problem.value))
+def unitary_rollout_fidelity(problem: QuantumControlProblem, sys: QuantumSystem) -> float:
+    return JuliaFloat.cast(get_global(mod_piccolo, 'unitary_rollout_fidelity')(problem.value.trajectory, sys))
 
 def plot_unitary_populations(problem: QuantumControlProblem, display_plot: bool = False):
-    plot = get_global(mod_qc, 'plot_unitary_populations')(problem.value.trajectory)
+    plot = get_global(mod_piccolo, 'plot_unitary_populations')(problem.value.trajectory)
     if display_plot == True:
-        display = get_global(mod_qc, 'display')(plot)
+        display = get_global(mod_piccolo, 'display')(plot)
     return plot
 
 def display(plot):
-    display = get_global(mod_qc, 'display')(plot)
+    display = get_global(mod_piccolo, 'display')(plot)

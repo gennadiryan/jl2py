@@ -6,6 +6,7 @@ main.o
 /Manifest.toml
 /target*/
 
+
 # Python
 /env/
 /.venv/
