@@ -7,6 +7,7 @@ import numpy as np
 
 # from experimental.main import JuliaLib, CDLLUtils, JuliaVal, JuliaValGC, as_object, ptr_to_arr, arr_to_ptr, get_ctypes_arr, init_JuliaVal, init_JuliaValGC, add_ref, del_ref
 from .julia_value import init_jl, ptr_to_arr, arr_to_ptr, get_nt, get_ctypes_arr, JuliaVal, JuliaValGC
+from .utils import _getattr, _setattr
 
 """
 TODO:
@@ -55,7 +56,7 @@ DONE:
 def ptr(value):
     return object.__getattribute__(value, 'val')
 
-def get_global(module, name):
+def get_global(module, name): # TODO: error handling is CRUCIAL here
     return JuliaValGC(jl.get_global(ptr(module), jl.symbol(name.encode())))
 
 def get_tparams(ty):
@@ -121,6 +122,38 @@ class JuliaSymbol(JuliaValGC):
     @staticmethod
     def cast(value: JuliaValGC) -> str:
         return get_sym_name(value)
+
+
+class JuliaModule(JuliaValGC):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+        fns = _getattr(self, 'fns')
+
+        _setattr(self, 'getproperty', get_global(JuliaValGC(fns.base_module()), 'getproperty'))
+        _setattr(self, 'propertynames', get_global(JuliaValGC(fns.base_module()), 'propertynames'))
+    
+    def __getattribute__(self, name: str) -> JuliaValGC:
+        if (len(name) == 0) or (len(name) > 0 and name[0] == '_'):
+            raise AttributeError(f'{type(self)} object has no attribute {name}')
+        try:
+            getter = _getattr(self, 'getproperty')
+        except Exception as e:
+            raise AttributeError(f'{type(self)} object has no attribute {name}')
+        return getter(self, JuliaSymbol(name))
+    
+    def __setattr__(self, name: str, value: JuliaValGC) -> None:
+        raise NotImplementedError()
+
+    def __dir__(self) -> list[str]:
+        fns = _getattr(self, 'fns')
+
+        props = _getattr(self, 'propertynames')(self)
+        props_addr = fns.unbox_voidpointer(ptr(props.ref.mem.ptr))
+        props_len = c_int64.from_address(ptr(props.size)).value
+        prop_syms = [JuliaValGC(c_void_p.from_address(props_addr + (i * ctypes.sizeof(c_void_p))).value) for i in range(props_len)]
+
+        return sorted(map(get_sym_name, prop_syms))
 
 
 class JuliaVec(JuliaValGC):
@@ -280,4 +313,6 @@ jl = init_jl()
 
 println = JuliaValGC(jl.eval_string(b'println'))
 getindex = get_global(JuliaValGC(jl.base_module()), 'getindex')
+setindex = get_global(JuliaValGC(jl.base_module()), 'setindex')
+typeof = get_global(JuliaValGC(jl.base_module()), 'typeof')
 
