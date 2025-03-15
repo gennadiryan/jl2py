@@ -1,13 +1,14 @@
 name = "jl2py"
 uuid = "8cc2866d-4e9a-4a4c-a08a-2c1210d8ed21"
 authors = ["Gennadi Ryan <gennadiryan@gmail.com> and contributors"]
-version = "1.0.0-DEV"
+version = "1.0.1-DEV"
 
 [deps]
-QuantumCollocation = "0dc23a59-5ffb-49af-b6bd-932a8ae77adf"
+Piccolo = "c4671d76-df94-11ed-2057-43d4fd632fad"
+PiccoloQuantumObjects = "5a402ddf-f93c-42eb-975e-5582dcda653d"
 
 [compat]
-QuantumCollocation = "0.3.2"
+PiccoloQuantumObjects = "0.3.1"
 julia = "1.6.7"
 
 [extras]
