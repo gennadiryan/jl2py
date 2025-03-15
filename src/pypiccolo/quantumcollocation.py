@@ -73,7 +73,7 @@ class QuantumControlProblem:
         get_global(mod_piccolo, 'solve!')(self.value)
 
 def unitary_rollout_fidelity(problem: QuantumControlProblem, sys: QuantumSystem) -> float:
-    return JuliaFloat.cast(get_global(mod_piccolo, 'unitary_rollout_fidelity')(problem.value.trajectory, sys))
+    return JuliaFloat.cast(get_global(mod_piccolo, 'unitary_rollout_fidelity')(problem.value.trajectory, sys.value))
 
 def plot_unitary_populations(problem: QuantumControlProblem, display_plot: bool = False):
     plot = get_global(mod_piccolo, 'plot_unitary_populations')(problem.value.trajectory)
