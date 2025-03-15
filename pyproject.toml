@@ -1,3 +1,9 @@
+[build-system]
+requires = [
+    "setuptools>=75.8",
+]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "pypiccolo"
 version = "0.1.0.a1"
@@ -11,12 +17,12 @@ keywords = [
     "dynamics",
 ]
 authors = [
-    {name = "Gennadi Ryan", email = "gennadiryan@gmail.com"},
-    {name = "Jack Champagne", email = "jackchampagne.r@gmail.com"},
+    { name = "Gennadi Ryan", email = "gennadiryan@gmail.com" },
+    { name = "Jack Champagne", email = "jackchampagne.r@gmail.com" },
 ]
 maintainers = [
     { name = "Gennadi Ryan", email = "gennadiryan@gmail.com" },
-    { name = "Jack Champagne", email = "jchampag@andrew.cmu.edu" },
+    { name = "Jack Champagne", email = "jackchampagne.r@gmail.com" },
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -26,7 +32,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 dependencies = [
-    "numpy>=2.2<3.0"
+    "numpy>=2.2"
 ]
 
 [project.optional-dependencies]
@@ -34,7 +40,14 @@ tests = [
     "pytest>=8.3",
 ]
 
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+[project.urls]
+# Homepage = ""
+# Documentation = ""
+# Repository = "https://github.com/[organization]/[repository].git"
+# Issues = "https://github.com/[organization]/[repository]/issues"
+# Changelog = "https://github.com/[organization]/[repository]/blob/main/CHANGELOG.md"
 
+[tool.setuptools]
+package-dir = { "" = "src" }
+package-data = { "*" = ["../target/**/*"] }
+include-package-data = true
