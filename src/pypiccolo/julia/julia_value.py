@@ -52,8 +52,11 @@ class JuliaVal:
 
     fns = init_jl()
 
-    def __init__(self, val):
-        fns = _getattr(self, 'fns')
+    def __init__(self, val: int | c_void_p):
+        assert isinstance(val, int) or isinstance(val, c_void_p)
+        if isinstance(val, c_void_p):
+            val = val.value
+        
         _setattr(self, 'val', val)
 
         _setattr(self, '_convert_to', lambda _: _getattr(_, 'val') if isinstance(_, JuliaVal) else _)
@@ -63,14 +66,13 @@ class JuliaVal:
         if (len(name) == 0) or (len(name) > 0 and name[0] == '_'):
             raise AttributeError(f'{type(self)} object has no attribute {name}')
                 
-        fns = _getattr(self, 'fns')
         val = _getattr(self, 'val')
     
-        idx = fns.field_index(fns.typeof(val), fns.symbol(name.encode()), 0)
+        idx = jl.field_index(jl.typeof(val), jl.symbol(name.encode()), 0)
         if idx < 0:
             raise AttributeError(f'{type(self)} object has no attribute {name}')
         
-        fld = fns.get_nth_field(val, idx)
+        fld = jl.get_nth_field(val, idx)
         if fld is None:
             raise AttributeError(f'{type(self)} object has no attribute {name}')
         
@@ -80,36 +82,32 @@ class JuliaVal:
         if (len(name) == 0) or (len(name) > 0 and name[0] == '_'):
             raise AttributeError(f'{type(self)} object has no attribute {name}')
 
-        fns = _getattr(self, 'fns')
         val = _getattr(self, 'val')
 
         value = _getattr(self, '_convert_to')(value)
 
-        idx = fns.field_index(fns.typeof(val), fns.symbol(name.encode()), 0)
+        idx = jl.field_index(jl.typeof(val), jl.symbol(name.encode()), 0)
         if idx < 0:
             raise AttributeError(f'{type(self)} object has no attribute {name}')
-        fns.set_nth_field(val, idx, value)
+        jl.set_nth_field(val, idx, value)
         
-        if fns.get_nth_field(val, idx) != value:
+        if jl.get_nth_field(val, idx) != value:
             raise ValueError()
     
     def __eq__(self, value):
         if not isinstance(value, JuliaVal):
             return False
-        
-        fns = _getattr(self, 'fns')
 
-        return bool(fns.egal(_getattr(self, '_convert_to')(self), _getattr(value, '_convert_to')(value)))
+        return bool(jl.egal(_getattr(self, '_convert_to')(self), _getattr(value, '_convert_to')(value)))
     
     def __call__(self, *args, **kwargs):
-        fns = _getattr(self, 'fns')
         val = _getattr(self, 'val')
 
-        argsptr = get_ctypes_arr(c_void_p, *map(_getattr(self, '_convert_to'), args))
+        argsptr = get_ctypes_arr(c_void_p, *map(lambda _: _getattr(_, '_convert_to')(_), args))
         nargs = len(args)
 
         # TODO(jack-champagne): add kwargs call here
-        res = fns.call(val, argsptr, nargs) # TODO: handle bad return values (i.e. `res is None` yet no exception thrown)
+        res = jl.call(val, argsptr, nargs) # TODO: handle bad return values (i.e. `res is None` yet no exception thrown)
 
         # # TODO: replace this block with proper error handling (subsequent block appears not to be working; may need to hold on to show_error pointer ahead of time)
         # if res is None:
@@ -125,11 +123,11 @@ class JuliaVal:
         # if res is None:
         #     return None
 
-        eo = fns.exception_occurred()
+        eo = jl.exception_occurred()
         if eo is not None:
             # fns.call2(fns.get_global(fns.base_module(), fns.symbol(b'showerror')), fns.get_global(fns.base_module(), fns.symbol(b'stderr')), eo)
-            fns.call2(fns.get_global(fns.base_module(), fns.symbol(b'showerror')), fns.stderr_obj(), eo)
-            fns.printf(fns.stderr_stream(), b'\n')
+            jl.call2(jl.get_global(jl.base_module(), jl.symbol(b'showerror')), jl.stderr_obj(), eo)
+            jl.printf(jl.stderr_stream(), b'\n')
             raise Exception()
         
         if res is None:
@@ -142,12 +140,11 @@ class JuliaVal:
         Consider simplifying implementation
         """
 
-        fns = _getattr(self, 'fns')
         val = _getattr(self, 'val')
 
-        ty = fns.typeof(val)
-        ty_name = fns.get_nth_field(ty, fns.field_index(fns.typeof(ty), fns.symbol(b'name'), 0))
-        ty_names = fns.get_nth_field(ty_name, fns.field_index(fns.typeof(ty_name), fns.symbol(b'names'), 0))
+        ty = jl.typeof(val)
+        ty_name = jl.get_nth_field(ty, jl.field_index(jl.typeof(ty), jl.symbol(b'name'), 0))
+        ty_names = jl.get_nth_field(ty_name, jl.field_index(jl.typeof(ty_name), jl.symbol(b'names'), 0))
         ty_names_len = c_size_t.from_address(ty_names)
         
         ty_names_as_symbol = [c_void_p.from_address(ty_names + ctypes.sizeof(ty_names_len) + (ctypes.sizeof(c_void_p) * i)) for i in range(ty_names_len.value)]
@@ -156,12 +153,11 @@ class JuliaVal:
         return ty_names_as_str
 
     def __repr__(self,):
-        fns = _getattr(self, 'fns')
         val = _getattr(self, 'val')
 
-        fn_repr = fns.get_global(fns.base_module(), fns.symbol(b'repr'))
-        val_res = fns.call1(fn_repr, val)
-        val_str = ctypes.string_at(fns.string_ptr(val_res)).decode()
+        fn_repr = jl.get_global(jl.base_module(), jl.symbol(b'repr'))
+        val_res = jl.call1(fn_repr, val)
+        val_str = ctypes.string_at(jl.string_ptr(val_res)).decode()
 
         return val_str
     
@@ -299,7 +295,7 @@ def del_ref(ref):
 
 
 
-def ptr_to_arr(fns, eltype, dims, data, own=True):
+def ptr_to_arr(eltype, dims, data, own=True):
     """
     Returns an Array{`eltype`, `len(dims)`} with dimensions `dims` and `data` located at data
 
@@ -314,22 +310,26 @@ def ptr_to_arr(fns, eltype, dims, data, own=True):
         - Given `np.ndarray` object `a` s.t. `len(a.shape) == 1` and `a.dtype == np.dtype('int64')`, let `data = a.ctypes.data_as(c_void_p)`.
     """
 
-    val_dims = get_ctypes_arr(c_void_p, *map(fns.box_int64, dims))
-    val_dims_types = get_ctypes_arr(c_void_p, *((fns.int64_type(),) * len(dims)))
+    val_dims = get_ctypes_arr(c_void_p, *map(jl.box_int64, dims))
+    val_dims_types = get_ctypes_arr(c_void_p, *((jl.int64_type(),) * len(dims)))
 
-    val_dims_tup_type = fns.apply_tuple_type_v(val_dims_types, len(dims))
-    val_dims_tup = fns.new_structv(val_dims_tup_type, val_dims, len(dims))
+    val_dims_tup_type = jl.apply_tuple_type_v(val_dims_types, len(dims))
+    val_dims_tup = jl.new_structv(val_dims_tup_type, val_dims, len(dims))
 
-    val_arr_type = fns.apply_array_type(eltype, len(dims))
-    val_arr = fns.ptr_to_array(val_arr_type, data, val_dims_tup, int(own))
+    val_arr_type = jl.apply_array_type(eltype, len(dims))
+    val_arr = jl.ptr_to_array(val_arr_type, data, val_dims_tup, int(own))
 
     return val_arr
 
 
-def arr_to_ptr(fns, ctypes_dtype, np_dtype, shape, len, arr):
+def arr_to_ptr(ctypes_dtype, np_dtype, shape, len, arr):
+    """
+    TODO: remove this fn or else integrate it into ndarray_from_value
+    """
+
     import numpy as np
 
-    ptr = fns.unbox_voidpointer(_getattr(arr.ref.mem.ptr, 'val'))
+    ptr = jl.unbox_voidpointer(_getattr(arr.ref.mem.ptr, 'val'))
     ctypes_arr = (ctypes_dtype * len).from_address(ptr)
     np_arr = np.ctypeslib.as_array(ctypes_arr, shape)
 
@@ -339,20 +339,24 @@ def arr_to_ptr(fns, ctypes_dtype, np_dtype, shape, len, arr):
 
 
 
-def get_nt(fns, names, vals, tys):
+def get_nt(names, vals, tys):
+    """
+    TODO: consider using gc push/pop here
+    """
+
     assert len(names) == len(vals) == len(tys)
     l = len(names)
 
-    carr_names = get_ctypes_arr(c_void_p, *[fns.symbol(name.encode()) for name in names])
+    carr_names = get_ctypes_arr(c_void_p, *[jl.symbol(name.encode()) for name in names])
     carr_vals = get_ctypes_arr(c_void_p, *vals)
     carr_tys = get_ctypes_arr(c_void_p, *tys)
 
-    tup_names_ty = fns.apply_tuple_type_v(get_ctypes_arr(c_void_p, *([fns.symbol_type()] * l)), l)
-    tup_names = fns.new_structv(tup_names_ty, carr_names, l)
-    tup_vals_ty = fns.apply_tuple_type_v(carr_tys, l)
+    tup_names_ty = jl.apply_tuple_type_v(get_ctypes_arr(c_void_p, *([jl.symbol_type()] * l)), l)
+    tup_names = jl.new_structv(tup_names_ty, carr_names, l)
+    tup_vals_ty = jl.apply_tuple_type_v(carr_tys, l)
     # tup_vals = fns.new_structv(tup_vals_ty, carr_vals, l)
-    nt_ty = fns.apply_type2(fns.namedtuple_type(), tup_names, tup_vals_ty)
-    nt = fns.new_structv(nt_ty, carr_vals, l)
+    nt_ty = jl.apply_type2(jl.namedtuple_type(), tup_names, tup_vals_ty)
+    nt = jl.new_structv(nt_ty, carr_vals, l)
 
     return nt
 
@@ -369,7 +373,6 @@ def get_nt(fns, names, vals, tys):
 
 class JuliaValGC(JuliaVal):
     def __init__(self, val, keep=None):
-        fns = _getattr(self, 'fns')
         _setattr(self, 'val', val)
         _setattr(self, 'keep', list() if keep is None else keep) # prevent GC of values depended on by val
 
@@ -379,7 +382,6 @@ class JuliaValGC(JuliaVal):
         _setattr(self, 'ref', add_ref(val))
     
     def __del__(self):
-        fns = _getattr(self, 'fns')
         ref = _getattr(self, 'ref')
 
         del_ref(ref)
@@ -429,16 +431,23 @@ def get_ctypes_arr(ty, *args):
 init_refs()
 
 
-if __name__ == '__main__':
-    jl = init_jl()
+# TODO: 
+#   - diagnose __main__.JuliaValGC != pypiccolo.julia.julia_value.JuliaValGC
+#   - clean up __init__ of JuliaVal (if val isinstance ctypes.c_void_p) then val = val.value
 
-    println = JuliaValGC(jl.eval_string(b'println'))
+# DONE:
+#   - switch from fns to importing jl
 
-    jl.eval_string(b'mutable struct pt_mut; x::Int; y::Int; end;')
-    jl.eval_string(b'struct pt_immut; x::Int; y::Int; end;')
+# # if __name__ == '__main__':
+# jl = init_jl()
 
-    ty_mut = JuliaValGC(jl.eval_string(b'pt_mut'))
-    ty_immut = JuliaValGC(jl.eval_string(b'pt_immut'))
+# println = JuliaValGC(jl.eval_string(b'println'))
 
-    arr = [JuliaValGC(jl.box_int64(_)) for _ in range(100)]
+# jl.eval_string(b'mutable struct pt_mut; x::Int; y::Int; end;')
+# jl.eval_string(b'struct pt_immut; x::Int; y::Int; end;')
+
+# ty_mut = JuliaValGC(jl.eval_string(b'pt_mut'))
+# ty_immut = JuliaValGC(jl.eval_string(b'pt_immut'))
+
+# arr = [JuliaValGC(jl.box_int64(_)) for _ in range(100)]
 

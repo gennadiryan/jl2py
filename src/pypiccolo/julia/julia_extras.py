@@ -6,6 +6,7 @@ from ctypes import cdll, c_double, c_float, c_int, c_int32, c_int64, c_uint, c_u
 import numpy as np
 
 # from experimental.main import JuliaLib, CDLLUtils, JuliaVal, JuliaValGC, as_object, ptr_to_arr, arr_to_ptr, get_ctypes_arr, init_JuliaVal, init_JuliaValGC, add_ref, del_ref
+from . import jl
 from .julia_value import init_jl, ptr_to_arr, arr_to_ptr, get_nt, get_ctypes_arr, JuliaVal, JuliaValGC
 from .utils import _getattr, _setattr
 
@@ -23,7 +24,6 @@ TODO:
     
 
 main.py TODO:
-    - get rid of implicit uses of globally defined Julia fns (e.g. getindex)
     - get rid of unnecessary args/kwargs expansions (e.g. in get_ctypes_arr), or verify they introduce no performance penalty
     - move definitions of libjulia-related values (cdll instance, asobject wrapper instance, etc.) into module body to ensure that they are imported and run exactly once
     - make ^^ depend on setuptools-related configs
@@ -49,6 +49,8 @@ DONE:
     - write tests comparing ptr_to_arr(..., own=True) vs ptr_to_arr(..., own=False)
     - write functions implementing [Unitary,QuantumState]SmoothPulseProblem
     - write tests based on `@testitem`s from [unitary,quantum_state]_smooth_pulse_problem.jl (to investigate limitations of JuliaVal API as well as to get some ideas for demo tasks, esp. as we plan compare to test QuTIP on the same tasks)
+
+    - get rid of implicit uses of globally defined Julia fns (e.g. getindex)
 """
 
 
@@ -76,12 +78,16 @@ def get_sym_name(sym):
 
 
 def call_with_kwargs(fn, args, names, vals):
+    """
+    TODO: consider using gc push/pop here (especially rather than JuliaValGC wrapping/explicit global rooting)
+    """
+
     tys = [JuliaType.typeof(_) for _ in vals]
     
     _fn = ptr(fn)
     _args, _vals, _tys = [list(map(ptr, _)) for _ in (args, vals, tys)]
 
-    nt = JuliaValGC(get_nt(jl, names, _vals, _tys))
+    nt = JuliaValGC(get_nt(names, _vals, _tys))
     _nt = ptr(nt)
     
     carr_args = get_ctypes_arr(c_void_p, *(_nt, _fn, *_args))
@@ -95,6 +101,10 @@ class JuliaType(JuliaValGC):
 
 
 class JuliaNum(JuliaValGC):
+    """
+    TODO:
+        - make this superclass useful and define things like __int__, __float__, __lt__, __gt__, __add__, __mul__, etc.
+    """
     pass
 
 class JuliaInt(JuliaNum):
@@ -128,10 +138,8 @@ class JuliaModule(JuliaValGC):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        fns = _getattr(self, 'fns')
-
-        _setattr(self, 'getproperty', get_global(JuliaValGC(fns.base_module()), 'getproperty'))
-        _setattr(self, 'propertynames', get_global(JuliaValGC(fns.base_module()), 'propertynames'))
+        _setattr(self, 'getproperty', get_global(JuliaValGC(jl.base_module()), 'getproperty'))
+        _setattr(self, 'propertynames', get_global(JuliaValGC(jl.base_module()), 'propertynames'))
     
     def __getattribute__(self, name: str) -> JuliaValGC:
         if (len(name) == 0) or (len(name) > 0 and name[0] == '_'):
@@ -146,10 +154,8 @@ class JuliaModule(JuliaValGC):
         raise NotImplementedError()
 
     def __dir__(self) -> list[str]:
-        fns = _getattr(self, 'fns')
-
         props = _getattr(self, 'propertynames')(self)
-        props_addr = fns.unbox_voidpointer(ptr(props.ref.mem.ptr))
+        props_addr = jl.unbox_voidpointer(ptr(props.ref.mem.ptr))
         props_len = c_int64.from_address(ptr(props.size)).value
         prop_syms = [JuliaValGC(c_void_p.from_address(props_addr + (i * ctypes.sizeof(c_void_p))).value) for i in range(props_len)]
 
@@ -160,12 +166,10 @@ class JuliaVec(JuliaValGC):
     def __init__(self, vals: list[JuliaVal], eltype: JuliaVal | None = None, own: bool = False) -> None:
         _getattr = lambda *_: object.__getattribute__(self, *_)
         _setattr = lambda *_: object.__setattr__(self, *_)
-
-        fns = _getattr('fns')
         
-        eltype = eltype if eltype is not None else JuliaValGC(fns.any_type())
+        eltype = eltype if eltype is not None else JuliaValGC(jl.any_type())
         carr_val = (c_void_p * len(vals))(*map(lambda _: object.__getattribute__(_, 'val'), vals))
-        val = ptr_to_arr(fns, object.__getattribute__(eltype, 'val'), (len(vals),), carr_val, own=own)
+        val = ptr_to_arr(object.__getattribute__(eltype, 'val'), (len(vals),), carr_val, own=own)
 
         super().__init__(val, keep=vals)
         _setattr('carr_val', carr_val) # prevent GC of the memory region storing references to the elements
@@ -176,7 +180,6 @@ class JuliaVec(JuliaValGC):
         _getattr = lambda *_: object.__getattribute__(self, *_)
         _setattr = lambda *_: object.__setattr__(self, *_)
 
-        fns = _getattr('fns')
         val = _getattr('val')
 
         try:
@@ -192,7 +195,6 @@ class JuliaVec(JuliaValGC):
         _getattr = lambda *_: object.__getattribute__(self, *_)
         _setattr = lambda *_: object.__setattr__(self, *_)
 
-        fns = _getattr('fns')
         val = _getattr('val')
 
         try:
@@ -223,8 +225,6 @@ class JuliaArr(JuliaValGC):
         _getattr = lambda *_: object.__getattribute__(self, *_)
         _setattr = lambda *_: object.__setattr__(self, *_)
 
-        fns = _getattr('fns')
-
         ty_np = arr.dtype
         shape_np = arr.shape
         ptr_np = arr.ctypes.data
@@ -233,7 +233,7 @@ class JuliaArr(JuliaValGC):
             raise TypeError(f'{arr.dtype} is unsupported')
         
         ty_jl = get_global(JuliaValGC(jl.base_module()), _getattr('_dtype_map')[ty_np.name])
-        val = ptr_to_arr(fns, ptr(ty_jl), shape_np[::-1], ptr_np, own=False)
+        val = ptr_to_arr(ptr(ty_jl), shape_np[::-1], ptr_np, own=False)
         
         super().__init__(val, keep=[arr])
         
