@@ -1,4 +1,4 @@
-__all__ = ["quantumcollocationpy"]
+# __all__ = ["quantumcollocationpy"]
 
-# Import the submodules
-from . import quantumcollocationpy
+# # Import the submodules
+# from . import quantumcollocationpy
