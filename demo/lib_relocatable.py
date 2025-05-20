@@ -12,7 +12,7 @@ depotdir = os.path.join(rootdir, 'share', 'julia') # must be sysimage DEPOT_PATH
 libjulia = os.path.join(libdir, 'libjulia.dylib') # can be generic libjulia
 libpiccolo = os.path.join(libdir, 'libpiccolo.dylib') # must be sysimage
 
-lib = ctypes.cdll.LoadLibrary(libjulia)
+lib = ctypes.cdll.LoadLibrary(libjulia) # loading libjulia into `_lib`, then loading libpiccolo into `lib`, and proceeding as below, solves the problem of `jl_typeof` being unavailable from lib
 lib.jl_init_with_image.argtypes = [c_char_p, c_char_p]
 lib.jl_init_with_image.restype = None
 lib.jl_eval_string.argtypes = [c_char_p]

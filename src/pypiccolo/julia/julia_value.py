@@ -11,6 +11,8 @@ from . import jl
 from .lib_julia import init_jl
 from .utils import _getattr, _setattr
 
+# from .julia_extras import call_with_kwargs
+
 
 class JuliaVal:
     """
@@ -102,6 +104,36 @@ class JuliaVal:
     
     def __call__(self, *args, **kwargs):
         val = _getattr(self, 'val')
+
+        if len(kwargs) > 0:
+            names, values = zip(*list(kwargs.items()))
+            return _call_with_kwargs(self, list(args), list(names), list(values))
+
+            # try:
+            #     def ptr(value):
+            #         return object.__getattribute__(value, 'val')
+                
+            #     def call_with_kwargs(fn, args, names, vals):
+            #         """
+            #         TODO: consider using gc push/pop here (especially rather than JuliaValGC wrapping/explicit global rooting)
+            #         """
+
+            #         tys = [JuliaValGC(jl.typeof(ptr(_))) for _ in vals]
+                    
+            #         _fn = ptr(fn)
+            #         _args, _vals, _tys = [list(map(ptr, _)) for _ in (args, vals, tys)]
+
+            #         nt = JuliaValGC(get_nt(names, _vals, _tys))
+            #         _nt = ptr(nt)
+                    
+            #         carr_args = get_ctypes_arr(c_void_p, *(_nt, _fn, *_args))
+            #         return JuliaValGC(jl.call(jl.kwcall_func(), carr_args, len(args) + 2))
+
+            #     names, values = zip(*list(kwargs.items()))
+            #     return call_with_kwargs(self, list(args), list(names), list(values))
+            
+            # except Exception as e:
+            #     pass
 
         argsptr = get_ctypes_arr(c_void_p, *map(lambda _: _getattr(_, '_convert_to')(_), args))
         nargs = len(args)
@@ -368,6 +400,26 @@ def get_nt(names, vals, tys):
 #     carr_args = get_ctypes_arr(c_void_p, *(nt, fn, *args))
 
 #     return fns.call(fns.kwcall_func(), carr_args, l + 2)
+
+
+def _call_with_kwargs(fn, args, names, vals):
+    """
+    TODO: consider using gc push/pop here (especially rather than JuliaValGC wrapping/explicit global rooting)
+    """
+
+    def ptr(value):
+        return object.__getattribute__(value, 'val')
+
+    tys = [JuliaValGC(jl.typeof(ptr(_))) for _ in vals]
+    
+    _fn = ptr(fn)
+    _args, _vals, _tys = [list(map(ptr, _)) for _ in (args, vals, tys)]
+
+    nt = JuliaValGC(get_nt(names, _vals, _tys))
+    _nt = ptr(nt)
+    
+    carr_args = get_ctypes_arr(c_void_p, *(_nt, _fn, *_args))
+    return JuliaValGC(jl.call(jl.kwcall_func(), carr_args, len(args) + 2))
 
 
 

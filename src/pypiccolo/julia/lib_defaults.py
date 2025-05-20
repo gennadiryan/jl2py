@@ -12,6 +12,7 @@ libfile = (os.path.extsep).join(('lib{}'.format(libname), libext))
 libpath = os.path.join(libdir, libfile)
 
 libfuncs = dict(
+    jl_init_with_image=((c_char_p, c_char_p), None),
     jl_eval_string=((c_char_p,), c_void_p),
     
     jl_call=((c_void_p, c_void_p, c_uint32,), c_void_p),

@@ -90,14 +90,19 @@ op = JuliaArr(gates['H'])
 t = JuliaInt(51)
 dt = JuliaFloat(0.2)
 
-pic_opts = call_with_kwargs(mod_pic.PiccoloOptions, [], 'verbose'.split(' '), [JuliaValGC(jl.false())])
+# pic_opts = call_with_kwargs(mod_pic.PiccoloOptions, [], 'verbose'.split(' '), [JuliaValGC(jl.false())])
+pic_opts = mod_pic.PiccoloOptions(verbose=JuliaValGC(jl.false()))
 
-# prob = mod_pic.UnitarySmoothPulseProblem(syst, op, t, dt)
-prob = call_with_kwargs(mod_pic.UnitarySmoothPulseProblem, [syst, op, t, dt], 'da_bound piccolo_options'.split(' '), [JuliaFloat(1.), pic_opts])
+# # prob = mod_pic.UnitarySmoothPulseProblem(syst, op, t, dt)
+# prob = call_with_kwargs(mod_pic.UnitarySmoothPulseProblem, [syst, op, t, dt], 'da_bound piccolo_options'.split(' '), [JuliaFloat(1.), pic_opts])
+prob = mod_pic.UnitarySmoothPulseProblem(syst, op, t, dt, da_bound=JuliaFloat(1.), piccolo_options=pic_opts)
 
+# fid_init = mod_pic.unitary_rollout_fidelity(prob.trajectory, syst)
+# # getattr(mod_pic, 'solve!')(prob)
+# call_with_kwargs(getattr(mod_pic, 'solve!'), [prob], 'max_iter verbose print_level'.split(), [JuliaInt(100), JuliaValGC(jl.false()), JuliaInt(1)])
+# fid_final = mod_pic.unitary_rollout_fidelity(prob.trajectory, syst)
 fid_init = mod_pic.unitary_rollout_fidelity(prob.trajectory, syst)
-# getattr(mod_pic, 'solve!')(prob)
-call_with_kwargs(getattr(mod_pic, 'solve!'), [prob], 'max_iter verbose print_level'.split(), [JuliaInt(100), JuliaValGC(jl.false()), JuliaInt(1)])
+(getattr(mod_pic, 'solve!'))(prob, max_iter=JuliaInt(100), verbose=JuliaValGC(jl.false()), print_level=JuliaInt(1))
 fid_final = mod_pic.unitary_rollout_fidelity(prob.trajectory, syst)
 
 fid_init, fid_final = [jl.unbox_float64(ptr(_)) for _ in [fid_init, fid_final]]
