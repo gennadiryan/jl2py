@@ -61,7 +61,8 @@ class JuliaVal:
         
         _setattr(self, 'val', val)
 
-        _setattr(self, '_convert_to', lambda _: _getattr(_, 'val') if isinstance(_, JuliaVal) else _)
+        # _setattr(self, '_convert_to', lambda _: _getattr(_, 'val') if isinstance(_, JuliaVal) else _)
+        _setattr(self, '_convert_to', lambda _: _getattr(_, 'val'))
         _setattr(self, '_convert_from', lambda _: JuliaVal(_))
     
     def __getattribute__(self, name):
@@ -428,7 +429,8 @@ class JuliaValGC(JuliaVal):
         _setattr(self, 'val', val)
         _setattr(self, 'keep', list() if keep is None else keep) # prevent GC of values depended on by val
 
-        _setattr(self, '_convert_to', lambda _: _getattr(_, 'val') if isinstance(_, JuliaVal) else _)
+        # _setattr(self, '_convert_to', lambda _: _getattr(_, 'val') if isinstance(_, JuliaVal) else _)
+        _setattr(self, '_convert_to', lambda _: _getattr(_, 'val'))
         _setattr(self, '_convert_from', lambda _: JuliaValGC(_))
 
         _setattr(self, 'ref', add_ref(val))
