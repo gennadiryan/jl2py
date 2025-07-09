@@ -41,6 +41,7 @@ libfuncs = dict(
     jl_string_ptr=((c_void_p,), c_char_p),
 
     jl_egal=((c_void_p, c_void_p,), c_int),
+    jl_isa=((c_void_p, c_void_p,), c_int),
 
     jl_gc_enable=((c_int,), c_int),
     jl_gc_is_enabled=(None, c_int),

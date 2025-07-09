@@ -26,7 +26,7 @@ class _CdllLib:
         # # self.lib.jl_init_with_image(os.path.join(os.path.split(os.path.split(self.libpath)[0])[0], 'bin').encode(), os.path.join(os.path.split(self.libpath)[0], 'libpiccolo.dylib').encode())
         
         self.lib_needs_shutdown = True
-        print('Success')
+        # print('Success')
 
         # self.funcs = dict([(name, self._register_func(name, argtypes=argtypes, restype=restype)) for name, (argtypes, restype) in funcs.items()] if funcs is not None else [])
         # self.vars = dict([(name, self._register_var(name, vartype)) for name, vartype in vars.items()] if vars is not None else [])

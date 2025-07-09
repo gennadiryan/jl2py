@@ -54,6 +54,8 @@ class JuliaVal:
 
     fns = init_jl()
 
+    _convert_arg = lambda self, _: _
+
     def __init__(self, val: int | c_void_p):
         assert isinstance(val, int) or isinstance(val, c_void_p)
         if isinstance(val, c_void_p):
@@ -64,6 +66,8 @@ class JuliaVal:
         # _setattr(self, '_convert_to', lambda _: _getattr(_, 'val') if isinstance(_, JuliaVal) else _)
         _setattr(self, '_convert_to', lambda _: _getattr(_, 'val'))
         _setattr(self, '_convert_from', lambda _: JuliaVal(_))
+
+        # _setattr(self, '_convert_arg', lambda _: _)
     
     def __getattribute__(self, name):
         if (len(name) == 0) or (len(name) > 0 and name[0] == '_'):
@@ -106,8 +110,10 @@ class JuliaVal:
     def __call__(self, *args, **kwargs):
         val = _getattr(self, 'val')
 
+        args = [_getattr(self, '_convert_arg')(_) for _ in args]
         if len(kwargs) > 0:
             names, values = zip(*list(kwargs.items()))
+            values = [_getattr(self, '_convert_arg')(_) for _ in values]
             return _call_with_kwargs(self, list(args), list(names), list(values))
 
             # try:
@@ -432,6 +438,8 @@ class JuliaValGC(JuliaVal):
         # _setattr(self, '_convert_to', lambda _: _getattr(_, 'val') if isinstance(_, JuliaVal) else _)
         _setattr(self, '_convert_to', lambda _: _getattr(_, 'val'))
         _setattr(self, '_convert_from', lambda _: JuliaValGC(_))
+
+        # _setattr(self, '_convert_arg', lambda _: _)
 
         _setattr(self, 'ref', add_ref(val))
     

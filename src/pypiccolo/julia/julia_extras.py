@@ -307,6 +307,37 @@ class ndarray_from_value(np.ndarray):
         # assert self.ctypes.data == val_ptr
         # self._jl_value = value
         return np_arr
+    
+
+def convert_arg(self, value):
+    if isinstance(value, JuliaVal):
+        return value
+    
+    import numbers
+
+    if value is None:
+        return JuliaValGC(jl.nothing())
+    
+    if isinstance(value, bool):
+        if value:
+            return JuliaValGC(jl.true())
+        else:
+            return JuliaValGC(jl.false())
+    
+    if isinstance(value, numbers.Number):
+        if isinstance(value, numbers.Real):
+            if isinstance(value, numbers.Integral):
+                return JuliaInt(value)
+            else:
+                return JuliaFloat(value)
+        else:
+            return JuliaComplex(value)
+
+def convert_res(self, value):
+    pass
+
+
+JuliaVal._convert_arg = convert_arg
 
 
 jl = init_jl()
@@ -315,4 +346,13 @@ println = JuliaValGC(jl.eval_string(b'println'))
 getindex = get_global(JuliaValGC(jl.base_module()), 'getindex')
 setindex = get_global(JuliaValGC(jl.base_module()), 'setindex')
 typeof = get_global(JuliaValGC(jl.base_module()), 'typeof')
+
+mod_base = JuliaModule(jl.base_module())
+mod_core = JuliaModule(jl.core_module())
+mod_main = JuliaModule(jl.main_module())
+
+type_map = dict(
+    JuliaInt=jl.int64_type,
+    JuliaFloat=jl.float64_type,
+)
 
