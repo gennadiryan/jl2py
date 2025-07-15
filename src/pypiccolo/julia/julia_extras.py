@@ -95,6 +95,11 @@ def call_with_kwargs(fn, args, names, vals):
 
 
 class JuliaType(JuliaValGC):
+    def __new__(cls, val: JuliaValGC, keep=None, skip=True) -> JuliaValGC:
+        inst = super().__new__(cls)
+        if not skip:
+            super(JuliaInt, inst).__init__(val, keep=keep)
+        return inst
     @staticmethod
     def typeof(value: JuliaValGC) -> JuliaValGC:
         return JuliaType(jl.typeof(ptr(value)))
@@ -108,6 +113,11 @@ class JuliaNum(JuliaValGC):
     pass
 
 class JuliaInt(JuliaNum):
+    def __new__(cls, val: JuliaValGC, keep=None, skip=True) -> JuliaValGC:
+        inst = super().__new__(cls)
+        if not skip:
+            super(JuliaInt, inst).__init__(val, keep=keep)
+        return inst
     def __init__(self, value: int) -> None:
         super().__init__(jl.box_int64(int(value)))
     @staticmethod
@@ -115,6 +125,11 @@ class JuliaInt(JuliaNum):
         return jl.unbox_int64(ptr(value))
 
 class JuliaFloat(JuliaNum):
+    def __new__(cls, val: JuliaValGC, keep=None, skip=True) -> JuliaValGC:
+        inst = super().__new__(cls)
+        if not skip:
+            super(JuliaFloat, inst).__init__(val, keep=keep)
+        return inst
     def __init__(self, value: float) -> None:
         super().__init__(jl.box_float64(float(value)))
     @staticmethod
@@ -127,6 +142,11 @@ class JuliaComplex(JuliaNum):
 
 
 class JuliaSymbol(JuliaValGC):
+    def __new__(cls, val: JuliaValGC, keep=None, skip=True) -> JuliaValGC:
+        inst = super().__new__(cls)
+        if not skip:
+            super(JuliaSymbol, inst).__init__(val, keep=keep)
+        return inst
     def __init__(self, value: str) -> None:
         super().__init__(jl.symbol(value.encode()))
     @staticmethod
@@ -135,6 +155,15 @@ class JuliaSymbol(JuliaValGC):
 
 
 class JuliaModule(JuliaValGC):
+    def __new__(cls, val: JuliaValGC, keep=None, skip=True) -> JuliaValGC:
+        inst = super().__new__(cls)
+        if not skip:
+            super(JuliaModule, inst).__init__(val, keep=keep)
+
+            _setattr(inst, 'getproperty', get_global(JuliaValGC(jl.base_module()), 'getproperty'))
+            _setattr(inst, 'propertynames', get_global(JuliaValGC(jl.base_module()), 'propertynames'))
+        return inst
+    
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
@@ -333,8 +362,12 @@ def convert_arg(self, value):
         else:
             return JuliaComplex(value)
 
-def convert_res(self, value):
-    pass
+def convert_res(self, value, keep=None, type_map=None):
+    if type_map is not None:
+        for k, v in type_map.items():
+            if jl.isa(value, k):
+                return v.__new__(v, value, keep=keep, skip=False)
+    return JuliaValGC(value, keep=keep)
 
 
 JuliaVal._convert_arg = convert_arg
@@ -351,8 +384,11 @@ mod_base = JuliaModule(jl.base_module())
 mod_core = JuliaModule(jl.core_module())
 mod_main = JuliaModule(jl.main_module())
 
-type_map = dict(
-    JuliaInt=jl.int64_type,
-    JuliaFloat=jl.float64_type,
-)
+type_map = dict([
+    (ptr(mod_core.DataType), JuliaType),
+    (jl.int64_type().value, JuliaInt),
+    (jl.float64_type().value, JuliaFloat),
+    (ptr(mod_core.Symbol), JuliaSymbol),
+    (ptr(mod_core.Module), JuliaModule),
+])
 
