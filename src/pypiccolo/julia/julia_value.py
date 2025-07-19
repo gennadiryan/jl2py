@@ -55,6 +55,7 @@ class JuliaVal:
     fns = init_jl()
 
     _convert_arg = lambda self, _: _
+    _convert_res = lambda self, _: JuliaVal(_)
 
     def __init__(self, val: int | c_void_p):
         assert isinstance(val, int) or isinstance(val, c_void_p)
@@ -83,7 +84,8 @@ class JuliaVal:
         if fld is None:
             raise AttributeError(f'{type(self)} object has no attribute {name}')
         
-        return _getattr(self, '_convert_from')(fld)
+        # return _getattr(self, '_convert_from')(fld)
+        return _getattr(self, '_convert_res')(fld)
     
     def __setattr__(self, name, value):
         if (len(name) == 0) or (len(name) > 0 and name[0] == '_'):
@@ -172,7 +174,8 @@ class JuliaVal:
         if res is None:
             raise Exception() # should not fall through to here
 
-        return _getattr(self, '_convert_from')(res)
+        # return _getattr(self, '_convert_from')(res)
+        return _getattr(self, '_convert_res')(res)
 
     def __dir__(self,):
         """

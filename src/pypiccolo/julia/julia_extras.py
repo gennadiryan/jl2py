@@ -95,10 +95,10 @@ def call_with_kwargs(fn, args, names, vals):
 
 
 class JuliaType(JuliaValGC):
-    def __new__(cls, val: JuliaValGC, keep=None, skip=True) -> JuliaValGC:
+    def __new__(cls, val: int | c_void_p, keep=None, skip=True) -> JuliaValGC:
         inst = super().__new__(cls)
         if not skip:
-            super(JuliaInt, inst).__init__(val, keep=keep)
+            super(JuliaType, inst).__init__(val, keep=keep)
         return inst
     @staticmethod
     def typeof(value: JuliaValGC) -> JuliaValGC:
@@ -113,7 +113,7 @@ class JuliaNum(JuliaValGC):
     pass
 
 class JuliaInt(JuliaNum):
-    def __new__(cls, val: JuliaValGC, keep=None, skip=True) -> JuliaValGC:
+    def __new__(cls, val: int | c_void_p, keep=None, skip=True) -> JuliaValGC:
         inst = super().__new__(cls)
         if not skip:
             super(JuliaInt, inst).__init__(val, keep=keep)
@@ -125,7 +125,7 @@ class JuliaInt(JuliaNum):
         return jl.unbox_int64(ptr(value))
 
 class JuliaFloat(JuliaNum):
-    def __new__(cls, val: JuliaValGC, keep=None, skip=True) -> JuliaValGC:
+    def __new__(cls, val: int | c_void_p, keep=None, skip=True) -> JuliaValGC:
         inst = super().__new__(cls)
         if not skip:
             super(JuliaFloat, inst).__init__(val, keep=keep)
@@ -137,12 +137,27 @@ class JuliaFloat(JuliaNum):
         return jl.unbox_float64(ptr(value))
 
 class JuliaComplex(JuliaNum):
+    def __new__(cls, val: int | c_void_p, keep=None, skip=True) -> JuliaValGC:
+        inst = super().__new__(cls)
+        if not skip:
+            super(JuliaFloat, inst).__init__(val, keep=keep)
+        return inst
     def __init__(self, value: complex) -> None:
         super().__init__(jl.call2(jl.get_global(jl.base_module(), ptr(JuliaSymbol('ComplexF64'))), *[ptr(JuliaFloat(_)) for _ in (value.real, value.imag)]))
 
 
+class JuliaString(JuliaValGC):
+    def __new__(cls, val: int | c_void_p, keep=None, skip=True) -> JuliaValGC:
+        inst = super().__new__(cls)
+        if not skip:
+            super(JuliaString, inst).__init__(val, keep=keep)
+        return inst
+    def __init__(self, value: str) -> None:
+        super().__init__(jl.pchar_to_string(*((lambda _value: (_value, len(_value)))(value.encode()))))
+
+
 class JuliaSymbol(JuliaValGC):
-    def __new__(cls, val: JuliaValGC, keep=None, skip=True) -> JuliaValGC:
+    def __new__(cls, val: int | c_void_p, keep=None, skip=True) -> JuliaValGC:
         inst = super().__new__(cls)
         if not skip:
             super(JuliaSymbol, inst).__init__(val, keep=keep)
@@ -155,7 +170,7 @@ class JuliaSymbol(JuliaValGC):
 
 
 class JuliaModule(JuliaValGC):
-    def __new__(cls, val: JuliaValGC, keep=None, skip=True) -> JuliaValGC:
+    def __new__(cls, val: int | c_void_p, keep=None, skip=True) -> JuliaValGC:
         inst = super().__new__(cls)
         if not skip:
             super(JuliaModule, inst).__init__(val, keep=keep)
@@ -370,8 +385,6 @@ def convert_res(self, value, keep=None, type_map=None):
     return JuliaValGC(value, keep=keep)
 
 
-JuliaVal._convert_arg = convert_arg
-
 
 jl = init_jl()
 
@@ -388,7 +401,11 @@ type_map = dict([
     (ptr(mod_core.DataType), JuliaType),
     (jl.int64_type().value, JuliaInt),
     (jl.float64_type().value, JuliaFloat),
+    (jl.string_type().value, JuliaString),
     (ptr(mod_core.Symbol), JuliaSymbol),
     (ptr(mod_core.Module), JuliaModule),
 ])
+
+JuliaVal._convert_arg = lambda *args, **kwargs: convert_arg(*args, **kwargs)
+JuliaVal._convert_res = lambda *args, **kwargs: convert_res(*args, type_map=type_map, **kwargs)
 

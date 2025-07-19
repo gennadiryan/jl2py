@@ -38,6 +38,8 @@ libfuncs = dict(
     jl_unbox_float64=((c_void_p,), c_double),
     jl_unbox_int64=((c_void_p,), c_int64),
     jl_unbox_voidpointer=((c_void_p,), c_void_p),
+
+    jl_pchar_to_string=((c_char_p, c_size_t,), c_void_p),
     jl_string_ptr=((c_void_p,), c_char_p),
 
     jl_egal=((c_void_p, c_void_p,), c_int),

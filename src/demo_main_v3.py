@@ -71,11 +71,12 @@ def traj_to_plt(traj):
 
 
 
-
+jl.eval_string(b'import Piccolo')
 
 mod_base = JuliaModule(jl.base_module())
 mod_main = JuliaModule(jl.main_module())
-mod_pic = JuliaModule(ptr(mod_main.Piccolo))
+# mod_pic = JuliaModule(ptr(mod_main.Piccolo))
+mod_pic = mod_main.Piccolo
 
 solve = getattr(mod_pic, 'solve!')
 
