@@ -71,12 +71,20 @@ def traj_to_plt(traj):
 
 
 
-jl.eval_string(b'import Piccolo')
+# jl.eval_string(b'import Piccolo')
 
+mod_core = JuliaModule(jl.core_module())
 mod_base = JuliaModule(jl.base_module())
 mod_main = JuliaModule(jl.main_module())
-# mod_pic = JuliaModule(ptr(mod_main.Piccolo))
-mod_pic = mod_main.Piccolo
+
+try:
+    mod_pic = mod_main.Piccolo
+except Exception as e:
+    print('Warning: Piccolo not loaded by default; importing Piccolo module from piccolo wrapper module')
+
+    # jl.module_using(ptr(mod_main), ptr(mod_core.Module(JuliaSymbol('Piccolo'))))
+    mod_pic = mod_main.piccolo.Piccolo
+
 
 solve = getattr(mod_pic, 'solve!')
 

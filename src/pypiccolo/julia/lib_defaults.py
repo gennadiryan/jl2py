@@ -54,6 +54,8 @@ libfuncs = dict(
     jl_get_global=((c_void_p, c_void_p,), c_void_p),
     jl_checked_assignment=((c_void_p, c_void_p, c_void_p, c_void_p,), None),
 
+    jl_module_using=((c_void_p, c_void_p,), None),
+
     jl_apply_type=((c_void_p, c_void_p, c_size_t,), c_void_p),
     jl_apply_type1=((c_void_p,) * 2, c_void_p),
     jl_apply_type2=((c_void_p,) * 3, c_void_p),
