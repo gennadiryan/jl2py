@@ -93,21 +93,26 @@ class JuliaVal:
 
         val = _getattr(self, 'val')
 
-        value = _getattr(self, '_convert_to')(value)
+        # value = _getattr(self, '_convert_to')(value)
+        value = _getattr(self, '_convert_arg')(value)
+        _value = _getattr(self, '_convert_to')(value)
 
         idx = jl.field_index(jl.typeof(val), jl.symbol(name.encode()), 0)
         if idx < 0:
             raise AttributeError(f'{type(self)} object has no attribute {name}')
-        jl.set_nth_field(val, idx, value)
+        jl.set_nth_field(val, idx, _value) # TODO: verify that `self` points to a mutable type; Julia backend considers this an unrecoverable error (this becomes a moot point if we switch to using {get,set}property)
         
-        if jl.get_nth_field(val, idx) != value:
+        if jl.get_nth_field(val, idx) != _value:
             raise ValueError()
     
     def __eq__(self, value):
         if not isinstance(value, JuliaVal):
             return False
 
-        return bool(jl.egal(_getattr(self, '_convert_to')(self), _getattr(value, '_convert_to')(value)))
+        value = _getattr(self, '_convert_arg')(value)
+        _value = _getattr(value, '_convert_to')(value)
+
+        return bool(jl.egal(_getattr(self, '_convert_to')(self), _value))
     
     def __call__(self, *args, **kwargs):
         val = _getattr(self, 'val')

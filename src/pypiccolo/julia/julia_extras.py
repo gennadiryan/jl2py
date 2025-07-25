@@ -104,6 +104,41 @@ class JuliaType(JuliaValGC):
     def typeof(value: JuliaValGC) -> JuliaValGC:
         return JuliaType(jl.typeof(ptr(value)))
 
+def apply_type(ty, params):
+    _ty = ptr(ty)
+    _ty_params = get_ctypes_arr(c_void_p, *map(ptr, params))
+    _ty_params_len = c_size_t(len(_ty_params))
+
+    _res = jl.apply_type(_ty, _ty_params, _ty_params_len)
+    return JuliaType(_res)
+
+def apply_tuple_type(params):
+    _ty_params = get_ctypes_arr(c_void_p, *map(ptr, params))
+    _ty_params_len = c_size_t(len(_ty_params))
+
+    _res = jl.apply_tuple_type_v(_ty_params, _ty_params_len)
+    return JuliaType(_res)
+
+
+
+class JuliaNone(JuliaValGC):
+    def __new__(cls, val: int | c_void_p, keep=None, skip=True) -> JuliaValGC:
+        inst = super().__new__(cls)
+        if not skip:
+            super(JuliaNone, inst).__init__(val, keep=keep)
+        return inst
+    def __init__(self, value: None) -> None:
+        super().__init__(jl.nothing())
+
+class JuliaBool(JuliaValGC):
+    def __new__(cls, val: int | c_void_p, keep=None, skip=True) -> JuliaValGC:
+        inst = super().__new__(cls)
+        if not skip:
+            super(JuliaBool, inst).__init__(val, keep=keep)
+        return inst
+    def __init__(self, value: bool) -> None:
+        super().__init__(jl.box_bool(int(value)))
+
 
 class JuliaNum(JuliaValGC):
     """
@@ -204,6 +239,38 @@ class JuliaModule(JuliaValGC):
         prop_syms = [JuliaValGC(c_void_p.from_address(props_addr + (i * ctypes.sizeof(c_void_p))).value) for i in range(props_len)]
 
         return sorted(map(get_sym_name, prop_syms))
+
+
+class JuliaVector(JuliaValGC):
+    def __new__(cls, val: int | c_void_p, keep=None, skip=True, **kwargs) -> JuliaValGC:
+        inst = super().__new__(cls)
+        if not skip:
+            super(JuliaVector, inst).__init__(val, keep=keep)
+            _setattr(inst, 'carr_val', None)
+        return inst
+
+    def __init__(self, vals: list[object], eltype: JuliaVal | None = None, own: bool = False) -> None:
+        # TODO: simplify via jl.field_type_concrete()
+        _datatype_arrayelem = lambda t: (lambda p: (ctypes.c_uint16.from_address(p + ctypes.sizeof(ctypes.c_uint32) * 3 + ctypes.sizeof(ctypes.c_int32) * 1 + ctypes.sizeof(ctypes.c_uint16) * 1).value >> 3) & 3)(ctypes.c_void_p.from_address(ptr(t.layout)).value)
+        datatype_arrayelem = lambda t: _datatype_arrayelem(JuliaType(get_svec_arr(JuliaType(get_svec_arr(apply_type(JuliaType(jl.array_type()), [t, JuliaInt(1)]).types)[0]).types)[1]))
+
+        # TODO: add support for inline JuliaVector (akin to current JuliaArr/ndarray_from_value implementation)
+        eltype = eltype if eltype is not None else JuliaType.__new__(JuliaType, jl.any_type(), skip=False)
+        assert datatype_arrayelem(eltype) == 1, 'JuliaVector currently only supports types T such that Base.datatype_arrayelem(Memory{T}) == 1, where 0, 1, 2 correspond to inlinealloc, isboxed, isbitsunion, respectively; please use JuliaArray instead'
+        
+        vals = [_getattr(self, '_convert_arg')(val) for val in vals]
+        carr_val = (c_void_p * len(vals))(*map(lambda _: _getattr(_, 'val'), vals))
+        val = ptr_to_arr(_getattr(eltype, 'val'), (len(vals),), carr_val, own=own)
+
+        super(JuliaVector, self).__init__(val)
+        _setattr(self, 'carr_val', carr_val)
+
+
+class _JuliaVec_inlinealloc(JuliaValGC):
+    pass
+
+class _JuliaVec_isboxed(JuliaValGC):
+    pass
 
 
 class JuliaVec(JuliaValGC):
@@ -353,29 +420,41 @@ class ndarray_from_value(np.ndarray):
         return np_arr
     
 
-def convert_arg(self, value):
+def convert_arg(self, value, type_map=None):
     if isinstance(value, JuliaVal):
         return value
     
-    import numbers
+    if type_map is not None:
+        for k, v in type_map.items():
+            if isinstance(value, k):
+                return v(value)
+    
+    return None
+    
+    # if isinstance(value, JuliaVal):
+    #     return value
+    
+    # import numbers
 
-    if value is None:
-        return JuliaValGC(jl.nothing())
+    # if value is None:
+    #     return JuliaValGC(jl.nothing())
     
-    if isinstance(value, bool):
-        if value:
-            return JuliaValGC(jl.true())
-        else:
-            return JuliaValGC(jl.false())
+    # if isinstance(value, bool):
+    #     if value:
+    #         return JuliaValGC(jl.true())
+    #     else:
+    #         return JuliaValGC(jl.false())
     
-    if isinstance(value, numbers.Number):
-        if isinstance(value, numbers.Real):
-            if isinstance(value, numbers.Integral):
-                return JuliaInt(value)
-            else:
-                return JuliaFloat(value)
-        else:
-            return JuliaComplex(value)
+    # if isinstance(value, numbers.Number):
+    #     if isinstance(value, numbers.Real):
+    #         if isinstance(value, numbers.Integral):
+    #             return JuliaInt(value)
+    #         else:
+    #             return JuliaFloat(value)
+    #     else:
+    #         return JuliaComplex(value)
+    
+    # return None
 
 def convert_res(self, value, keep=None, type_map=None):
     if type_map is not None:
@@ -397,7 +476,19 @@ mod_base = JuliaModule(jl.base_module())
 mod_core = JuliaModule(jl.core_module())
 mod_main = JuliaModule(jl.main_module())
 
-type_map = dict([
+
+import numbers
+
+type_map_arg = dict([
+    (type(None), JuliaNone),
+    (bool, JuliaBool),
+    (numbers.Integral, JuliaInt),
+    (numbers.Real, JuliaFloat),
+    (numbers.Complex, JuliaComplex),
+    (str, JuliaString),
+])
+
+type_map_res = dict([
     (ptr(mod_core.DataType), JuliaType),
     (jl.int64_type().value, JuliaInt),
     (jl.float64_type().value, JuliaFloat),
@@ -406,6 +497,6 @@ type_map = dict([
     (ptr(mod_core.Module), JuliaModule),
 ])
 
-JuliaVal._convert_arg = lambda *args, **kwargs: convert_arg(*args, **kwargs)
-JuliaVal._convert_res = lambda *args, **kwargs: convert_res(*args, type_map=type_map, **kwargs)
+JuliaVal._convert_arg = lambda *args, **kwargs: convert_arg(*args, type_map=type_map_arg, **kwargs)
+JuliaVal._convert_res = lambda *args, **kwargs: convert_res(*args, type_map=type_map_res, **kwargs)
 

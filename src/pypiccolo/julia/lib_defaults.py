@@ -75,6 +75,14 @@ libfuncs = dict(
     jl_get_current_task=(None, c_void_p),
 
     jl_get_pgcstack=(None, c_void_p),
+
+    jl_field_type_concrete=((c_void_p, c_size_t,), c_void_p),
+
+    # TODO:
+    #   - consider adding:
+    #     - jl_genericmemory_how(jl_genericmemory_t *) -> int
+    #     - jl_field_type_concrete(jl_datatype_t *, size_t) -> jl_value_t *
+    #     - jl_{not_,}atomic_sym
 )
 
 libvars = dict(
