@@ -11,6 +11,8 @@ main.o
 /.venv/
 /**/__pycache__/
 /dist/
+src/pypiccolo.egg-info
+
 
 # IDE
 *.code-workspace
@@ -18,3 +20,4 @@ main.o
 # Misc
 .DS_Store
 /stash*/
+scripts/Manifest.toml
